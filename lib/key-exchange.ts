@@ -262,7 +262,7 @@ export function validateKeyExchangeInvite(invite: KeyExchangeInvite): boolean {
     }
 
     return true;
-  } catch (error) {
+  } catch {
     return false;
   }
 }

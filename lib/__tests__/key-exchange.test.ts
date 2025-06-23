@@ -19,6 +19,7 @@ import {
 } from "../key-exchange";
 import { createIdentity } from "../crypto";
 import { initSignalProtocol } from "../signal-protocol";
+import { PreKeyBundle } from "../types";
 
 // Mock IndexedDB
 import 'fake-indexeddb/auto';
@@ -129,8 +130,6 @@ describe("Key Exchange Tests", () => {
     });
 
     test("should parse QR code back to invite", async () => {
-      const qrCodeDataURL = await generateKeyExchangeQR(testInvite);
-      
       // Extract the QR code data from the data URL
       // In a real implementation, this would be extracted by a QR code reader
       // For testing, we'll simulate the QR code content
@@ -403,11 +402,11 @@ describe("Key Exchange Tests", () => {
       // Corrupt the invite data
       const corruptedInvite = {
         ...invite,
-        preKeyBundle: null as unknown as any
+        preKeyBundle: null as unknown as PreKeyBundle
       };
 
       await expect(
-        generateKeyExchangeQR(corruptedInvite)
+        generateKeyExchangeQR(corruptedInvite as KeyExchangeInvite)
       ).rejects.toThrow();
     });
   });

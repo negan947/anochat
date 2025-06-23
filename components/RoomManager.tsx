@@ -156,7 +156,7 @@ export default function RoomManager({ identity, onRoomJoined }: RoomManagerProps
     try {
       await navigator.clipboard.writeText(generatedInvite);
       // Could add toast notification here
-    } catch (error) {
+    } catch {
       setError("Failed to copy invite");
     }
   };

@@ -78,7 +78,7 @@ describe("Signal Protocol Tests", () => {
       const alicePassphrase = "alice-passphrase-123";
       const bobPassphrase = "bob-passphrase-456";
 
-      const aliceIdentity = await createIdentity(alicePassphrase);
+      await createIdentity(alicePassphrase);
       const bobIdentity = await createIdentity(bobPassphrase);
 
       // Bob generates a pre-key bundle
@@ -99,7 +99,7 @@ describe("Signal Protocol Tests", () => {
       const bobPassphrase = "bob-passphrase-456";
       const evePassphrase = "eve-passphrase-789";
 
-      const aliceIdentity = await createIdentity(alicePassphrase);
+      await createIdentity(alicePassphrase);
       const bobIdentity = await createIdentity(bobPassphrase);
       const eveIdentity = await createIdentity(evePassphrase);
 
@@ -125,7 +125,7 @@ describe("Signal Protocol Tests", () => {
       const alicePassphrase = "alice-passphrase-123";
       const bobPassphrase = "bob-passphrase-456";
 
-      const aliceIdentity = await createIdentity(alicePassphrase);
+      await createIdentity(alicePassphrase);
       const bobIdentity = await createIdentity(bobPassphrase);
 
       const bobAddress = "bob@example.com";
@@ -328,7 +328,7 @@ describe("Signal Protocol Tests", () => {
       const alicePassphrase = "alice-passphrase-123";
       const bobPassphrase = "bob-passphrase-456";
 
-      const aliceIdentity = await createIdentity(alicePassphrase);
+      await createIdentity(alicePassphrase);
       const bobIdentity = await createIdentity(bobPassphrase);
 
       const bobAddress = "bob@example.com";
@@ -356,7 +356,7 @@ describe("Signal Protocol Tests", () => {
       const alicePassphrase = "alice-passphrase-123";
       const bobPassphrase = "bob-passphrase-456";
 
-      const aliceIdentity = await createIdentity(alicePassphrase);
+      await createIdentity(alicePassphrase);
       const bobIdentity = await createIdentity(bobPassphrase);
 
       const bobAddress = "bob@example.com";
