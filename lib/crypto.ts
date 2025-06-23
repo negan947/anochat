@@ -218,7 +218,7 @@ export async function loadIdentity(
       fingerprint: storedIdentity.fingerprint,
       createdAt: storedIdentity.createdAt,
     };
-  } catch (error) {
+  } catch {
     throw new CryptoError("Failed to decrypt identity. Wrong passphrase?");
   }
 }
