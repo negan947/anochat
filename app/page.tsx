@@ -1,103 +1,230 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useState, useEffect } from "react";
+import {
+  initCrypto,
+  generateIdentityKey,
+  generateFingerprint,
+  createIdentity,
+  loadIdentity,
+  generateSessionId,
+  getOrCreateSessionId,
+  validatePassphrase,
+  isCryptoInitialized,
+} from "@/lib/crypto";
+import storage from "@/lib/storage";
+
+export default function CryptoTestPage() {
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [sessionId, setSessionId] = useState("");
+  const [passphrase, setPassphrase] = useState("");
+  const [testResults, setTestResults] = useState<string[]>([]);
+  const [currentIdentity, setCurrentIdentity] = useState<any>(null);
+  const [storedIdentities, setStoredIdentities] = useState<any[]>([]);
+
+  useEffect(() => {
+    // Initialize crypto on page load
+    initializeCrypto();
+  }, []);
+
+  const initializeCrypto = async () => {
+    try {
+      await initCrypto();
+      setIsInitialized(true);
+      addTestResult("✅ Crypto library initialized successfully");
+      
+      // Get or create session ID
+      const sid = getOrCreateSessionId();
+      setSessionId(sid);
+      addTestResult(`✅ Session ID: ${sid}`);
+      
+      // Load stored identities
+      await loadStoredIdentities();
+    } catch (error) {
+      addTestResult(`❌ Failed to initialize crypto: ${error}`);
+    }
+  };
+
+  const loadStoredIdentities = async () => {
+    try {
+      const identities = await storage.getAllIdentities();
+      setStoredIdentities(identities);
+      addTestResult(`✅ Loaded ${identities.length} stored identities`);
+    } catch (error) {
+      addTestResult(`❌ Failed to load identities: ${error}`);
+    }
+  };
+
+  const addTestResult = (result: string) => {
+    setTestResults((prev) => [...prev, `[${new Date().toLocaleTimeString()}] ${result}`]);
+  };
+
+  const testKeyGeneration = () => {
+    try {
+      const keypair = generateIdentityKey();
+      const fingerprint = generateFingerprint(keypair.publicKey);
+      addTestResult("✅ Generated new keypair");
+      addTestResult(`   Public key: ${keypair.publicKey.slice(0, 8)}...`);
+      addTestResult(`   Private key: ${keypair.privateKey.slice(0, 8)}...`);
+      addTestResult(`   Fingerprint: ${fingerprint}`);
+    } catch (error) {
+      addTestResult(`❌ Key generation failed: ${error}`);
+    }
+  };
+
+  const testCreateIdentity = async () => {
+    if (!passphrase) {
+      addTestResult("❌ Please enter a passphrase first");
+      return;
+    }
+
+    const validation = validatePassphrase(passphrase);
+    if (!validation.isValid) {
+      addTestResult(`❌ Weak passphrase: ${validation.feedback.join(", ")}`);
+      return;
+    }
+
+    try {
+      const identity = await createIdentity(passphrase);
+      setCurrentIdentity(identity);
+      addTestResult("✅ Created and stored new identity");
+      addTestResult(`   Fingerprint: ${identity.fingerprint}`);
+      await loadStoredIdentities();
+    } catch (error) {
+      addTestResult(`❌ Failed to create identity: ${error}`);
+    }
+  };
+
+  const testLoadIdentity = async (fingerprint: string) => {
+    if (!passphrase) {
+      addTestResult("❌ Please enter a passphrase first");
+      return;
+    }
+
+    try {
+      const identity = await loadIdentity(fingerprint, passphrase);
+      if (identity) {
+        setCurrentIdentity(identity);
+        addTestResult(`✅ Loaded identity: ${fingerprint}`);
+      } else {
+        addTestResult(`❌ Identity not found: ${fingerprint}`);
+      }
+    } catch (error) {
+      addTestResult(`❌ Failed to load identity: ${error}`);
+    }
+  };
+
+  const testBurnEverything = async () => {
+    if (confirm("Are you sure you want to delete all data? This cannot be undone!")) {
+      try {
+        await storage.burnEverything();
+        setCurrentIdentity(null);
+        setStoredIdentities([]);
+        setTestResults([]);
+        addTestResult("🔥 All data burned successfully");
+        
+        // Generate new session ID
+        const newSid = generateSessionId();
+        setSessionId(newSid);
+        sessionStorage.setItem("anochat_session_id", newSid);
+      } catch (error) {
+        addTestResult(`❌ Failed to burn data: ${error}`);
+      }
+    }
+  };
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <div className="min-h-screen bg-gray-900 text-gray-100 p-8">
+      <div className="max-w-4xl mx-auto">
+        <h1 className="text-3xl font-bold mb-8">AnoChat Crypto Test Suite</h1>
+        
+        <div className="bg-gray-800 rounded-lg p-6 mb-6">
+          <h2 className="text-xl font-semibold mb-4">System Status</h2>
+          <div className="space-y-2">
+            <p>Crypto Initialized: {isInitialized ? "✅ Yes" : "❌ No"}</p>
+            <p>Session ID: <code className="bg-gray-700 px-2 py-1 rounded text-sm">{sessionId || "Not generated"}</code></p>
+            <p>Current Identity: <code className="bg-gray-700 px-2 py-1 rounded text-sm">{currentIdentity?.fingerprint || "None"}</code></p>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
+
+        <div className="bg-gray-800 rounded-lg p-6 mb-6">
+          <h2 className="text-xl font-semibold mb-4">Passphrase</h2>
+          <input
+            type="password"
+            value={passphrase}
+            onChange={(e) => setPassphrase(e.target.value)}
+            placeholder="Enter passphrase for key encryption"
+            className="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 mb-2"
           />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+          <p className="text-sm text-gray-400">Used for encrypting/decrypting private keys</p>
+        </div>
+
+        <div className="bg-gray-800 rounded-lg p-6 mb-6">
+          <h2 className="text-xl font-semibold mb-4">Test Operations</h2>
+          <div className="grid grid-cols-2 gap-4">
+            <button
+              onClick={testKeyGeneration}
+              disabled={!isInitialized}
+              className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 px-4 py-2 rounded"
+            >
+              Test Key Generation
+            </button>
+            <button
+              onClick={testCreateIdentity}
+              disabled={!isInitialized}
+              className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 px-4 py-2 rounded"
+            >
+              Create & Store Identity
+            </button>
+            <button
+              onClick={testBurnEverything}
+              disabled={!isInitialized}
+              className="bg-red-600 hover:bg-red-700 disabled:bg-gray-600 px-4 py-2 rounded col-span-2"
+            >
+              🔥 Burn Everything
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-gray-800 rounded-lg p-6 mb-6">
+          <h2 className="text-xl font-semibold mb-4">Stored Identities</h2>
+          {storedIdentities.length === 0 ? (
+            <p className="text-gray-400">No identities stored</p>
+          ) : (
+            <div className="space-y-2">
+              {storedIdentities.map((identity) => (
+                <div key={identity.fingerprint} className="flex items-center justify-between bg-gray-700 p-3 rounded">
+                  <div>
+                    <p className="text-sm font-mono">{identity.fingerprint}</p>
+                    <p className="text-xs text-gray-400">Created: {new Date(identity.createdAt).toLocaleString()}</p>
+                  </div>
+                  <button
+                    onClick={() => testLoadIdentity(identity.fingerprint)}
+                    className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm"
+                  >
+                    Load
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="bg-gray-800 rounded-lg p-6">
+          <h2 className="text-xl font-semibold mb-4">Test Results</h2>
+          <div className="bg-gray-900 rounded p-4 h-64 overflow-y-auto">
+            {testResults.length === 0 ? (
+              <p className="text-gray-400">No test results yet</p>
+            ) : (
+              <div className="space-y-1 font-mono text-sm">
+                {testResults.map((result, index) => (
+                  <p key={index} className="text-green-400">{result}</p>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
