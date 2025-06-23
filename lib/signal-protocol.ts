@@ -196,9 +196,23 @@ export async function generatePreKeyBundle(
     const signedPreKeyId = Math.floor(Math.random() * 16777216); // 24-bit ID
     const signedPreKeyPair = generateKeyPair();
     
-    // Create signature using identity private key (simplified)
+    // The identity key is an X25519 keypair (32-byte secret key). The Ed25519
+    // signing API however expects a 64-byte Ed25519 secret key.  We can safely
+    // treat our 32-byte secret key as a seed and deterministically derive an
+    // Ed25519 signing key from it.  This preserves compatibility with the
+    // rest of the code-base without having to migrate existing identities.
+
     const messageToSign = signedPreKeyPair.publicKey;
-    const signature = sodium.crypto_sign_detached(messageToSign, identity.privateKey);
+
+    // Derive a deterministic Ed25519 key­pair from the existing secret key
+    // (libsodium interprets the 32-byte seed as an Ed25519 seed).
+    const edKeyPair = sodium.crypto_sign_seed_keypair(identity.privateKey);
+
+    // Generate the detached signature using the derived 64-byte secret key.
+    const signature = sodium.crypto_sign_detached(messageToSign, edKeyPair.privateKey);
+
+    // Clear sensitive memory
+    clearMemory(edKeyPair.privateKey);
 
     // Generate a one-time pre-key
     const preKeyId = Math.floor(Math.random() * 16777216);
