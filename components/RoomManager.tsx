@@ -76,7 +76,7 @@ export default function RoomManager({ identity, onRoomJoined }: RoomManagerProps
       );
 
       // Generate room invite
-      const invite = await generateRoomInvite(identity, roomId, roomName || undefined);
+      const invite = await generateRoomInvite(identity, roomId);
       setGeneratedInvite(invite.qrCode);
       
       await loadActiveRooms();

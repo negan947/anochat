@@ -5,6 +5,12 @@ import MessageList from "./MessageList";
 import MessageInput from "./MessageInput";
 import { IdentityKey } from "@/lib/types";
 import { generateFingerprint } from "@/lib/crypto";
+import {
+  initSignalProtocol,
+  hasSession,
+  generatePreKeyBundle,
+  processPreKeyBundle
+} from "@/lib/signal-protocol";
 
 interface Message {
   id: string;
@@ -56,6 +62,19 @@ export default function ChatInterface({
     try {
       setIsConnected(true);
       setParticipants([identity.fingerprint, recipientFingerprint]);
+      
+      // Ensure Signal Protocol is ready
+      await initSignalProtocol();
+
+      // For demo purposes establish a local session with the simulated recipient
+      const sessionExists = await hasSession(recipientFingerprint, 1);
+      if (!sessionExists) {
+        // Use our own identity keys to fabricate a bundle the other side would
+        // normally provide. This is *only* for the local-demo environment and
+        // should be replaced with the real remote bundle exchange.
+        const preKeyBundle = await generatePreKeyBundle(identity);
+        await processPreKeyBundle(recipientFingerprint, 1, preKeyBundle);
+      }
       
       // In a real implementation, you would:
       // 1. Subscribe to real-time updates from Supabase
