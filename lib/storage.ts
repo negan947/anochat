@@ -27,7 +27,7 @@ interface StoredSignedPreKey {
   createdAt: Date;
 }
 
-interface StoredSession {
+interface StoredSignalSession {
   identifier: string;
   record: ArrayBuffer;
   deviceId: number;
@@ -50,7 +50,7 @@ class AnoChatDatabase extends Dexie {
   // New Signal Protocol tables
   preKeys!: Table<StoredPreKey>;
   signedPreKeys!: Table<StoredSignedPreKey>;
-  sessions!: Table<StoredSession>;
+  signalSessions!: Table<StoredSignalSession>;
   identityKeys!: Table<StoredIdentityKey>;
 
   constructor() {
@@ -65,7 +65,7 @@ class AnoChatDatabase extends Dexie {
       // New Signal Protocol stores
       preKeys: "keyId, createdAt",
       signedPreKeys: "keyId, createdAt", 
-      sessions: "identifier, deviceId, createdAt, lastUsed",
+      signalSessions: "identifier, deviceId, createdAt, lastUsed",
       identityKeys: "identifier, createdAt"
     });
 
@@ -388,13 +388,13 @@ export const storage = {
   /**
    * Store a Signal session
    */
-  async storeSession(identifier: string, record: ArrayBuffer): Promise<void> {
+  async storeSignalSession(identifier: string, record: ArrayBuffer): Promise<void> {
     try {
       // Extract device ID from identifier (format: "name.deviceId")
       const parts = identifier.split('.');
       const deviceId = parts.length > 1 ? parseInt(parts[parts.length - 1]) : 1;
 
-      await db.sessions.put({
+      await db.signalSessions.put({
         identifier,
         record,
         deviceId,
@@ -402,50 +402,50 @@ export const storage = {
         lastUsed: new Date()
       });
     } catch (error) {
-      throw new StorageError(`Failed to store session: ${error}`);
+      throw new StorageError(`Failed to store signal session: ${error}`);
     }
   },
 
   /**
    * Get a Signal session
    */
-  async getSession(identifier: string): Promise<ArrayBuffer | undefined> {
+  async getSignalSession(identifier: string): Promise<ArrayBuffer | undefined> {
     try {
-      const session = await db.sessions.get(identifier);
+      const session = await db.signalSessions.get(identifier);
       if (session) {
         // Update last used timestamp
-        await db.sessions.update(identifier, { lastUsed: new Date() });
+        await db.signalSessions.update(identifier, { lastUsed: new Date() });
         return session.record;
       }
       return undefined;
     } catch (error) {
-      throw new StorageError(`Failed to get session: ${error}`);
+      throw new StorageError(`Failed to get signal session: ${error}`);
     }
   },
 
   /**
-   * Remove a specific session
+   * Remove a specific Signal session
    */
-  async removeSession(identifier: string): Promise<void> {
+  async removeSignalSession(identifier: string): Promise<void> {
     try {
-      await db.sessions.delete(identifier);
+      await db.signalSessions.delete(identifier);
     } catch (error) {
-      throw new StorageError(`Failed to remove session: ${error}`);
+      throw new StorageError(`Failed to remove signal session: ${error}`);
     }
   },
 
   /**
-   * Remove all sessions for an identifier (all devices)
+   * Remove all Signal sessions for an identifier (all devices)
    */
   async removeAllSessionsForIdentifier(baseIdentifier: string): Promise<void> {
     try {
       // Remove all sessions that start with the base identifier
-      await db.sessions
+      await db.signalSessions
         .where('identifier')
         .startsWith(baseIdentifier)
         .delete();
     } catch (error) {
-      throw new StorageError(`Failed to remove all sessions: ${error}`);
+      throw new StorageError(`Failed to remove all signal sessions: ${error}`);
     }
   },
 
@@ -454,7 +454,7 @@ export const storage = {
    */
   async getDeviceIds(baseIdentifier: string): Promise<number[]> {
     try {
-      const sessions = await db.sessions
+      const sessions = await db.signalSessions
         .where('identifier')
         .startsWith(baseIdentifier)
         .toArray();
@@ -513,16 +513,18 @@ export const storage = {
       await db.transaction('rw', [
         db.identities,
         db.rooms,
+        db.sessions,
         db.preKeys,
         db.signedPreKeys,
-        db.sessions,
+        db.signalSessions,
         db.identityKeys
       ], async () => {
         await db.identities.clear();
         await db.rooms.clear();
+        await db.sessions.clear();
         await db.preKeys.clear();
         await db.signedPreKeys.clear();
-        await db.sessions.clear();
+        await db.signalSessions.clear();
         await db.identityKeys.clear();
       });
     } catch (error) {
@@ -536,27 +538,30 @@ export const storage = {
   async getStorageStats(): Promise<{
     identities: number;
     rooms: number;
+    sessions: number;
     preKeys: number;
     signedPreKeys: number;
-    sessions: number;
+    signalSessions: number;
     identityKeys: number;
   }> {
     try {
-      const [identities, rooms, preKeys, signedPreKeys, sessions, identityKeys] = await Promise.all([
+      const [identities, rooms, sessions, preKeys, signedPreKeys, signalSessions, identityKeys] = await Promise.all([
         db.identities.count(),
         db.rooms.count(),
+        db.sessions.count(),
         db.preKeys.count(),
         db.signedPreKeys.count(),
-        db.sessions.count(),
+        db.signalSessions.count(),
         db.identityKeys.count()
       ]);
 
       return {
         identities,
         rooms,
+        sessions,
         preKeys,
         signedPreKeys,
-        sessions,
+        signalSessions,
         identityKeys
       };
     } catch (error) {
