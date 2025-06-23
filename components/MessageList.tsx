@@ -35,6 +35,7 @@ export default function MessageList({
   // Decrypt messages as they arrive
   useEffect(() => {
     decryptNewMessages();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages]);
 
   const scrollToBottom = () => {

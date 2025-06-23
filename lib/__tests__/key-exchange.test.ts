@@ -16,13 +16,12 @@ import {
   verifyFingerprints,
   generateRoomInvite,
   KeyExchangeInvite,
-  KeyExchangeResponse
 } from "../key-exchange";
 import { createIdentity } from "../crypto";
 import { initSignalProtocol } from "../signal-protocol";
 
 // Mock IndexedDB
-require('fake-indexeddb/auto');
+import 'fake-indexeddb/auto';
 
 // Mock global btoa/atob for Node.js environment
 if (typeof global.btoa === 'undefined') {
@@ -254,7 +253,7 @@ describe("Key Exchange Tests", () => {
       const missingFingerprintInvite = { ...validInvite, senderFingerprint: "" };
       expect(validateKeyExchangeInvite(missingFingerprintInvite)).toBe(false);
 
-      const missingBundleInvite = { ...validInvite, preKeyBundle: null as any };
+              const missingBundleInvite = { ...validInvite, preKeyBundle: null as unknown };
       expect(validateKeyExchangeInvite(missingBundleInvite)).toBe(false);
     });
 
@@ -392,7 +391,7 @@ describe("Key Exchange Tests", () => {
       };
 
       await expect(
-        createKeyExchangeInvite(invalidIdentity as any)
+        createKeyExchangeInvite(invalidIdentity as IdentityKey)
       ).rejects.toThrow();
     });
 
@@ -404,7 +403,7 @@ describe("Key Exchange Tests", () => {
       // Corrupt the invite data
       const corruptedInvite = {
         ...invite,
-        preKeyBundle: null as any
+        preKeyBundle: null as unknown as any
       };
 
       await expect(

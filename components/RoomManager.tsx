@@ -4,22 +4,18 @@ import { useState, useEffect } from "react";
 import QRCode from "react-qr-code";
 import { 
   generateRoomId,
-  generateFingerprint,
 } from "@/lib/crypto";
 import { 
-  createKeyExchangeInvite,
-  generateKeyExchangeQR,
   parseKeyExchangeQR,
   parseKeyExchangeLink,
   generateRoomInvite,
 } from "@/lib/key-exchange";
 import { 
   initSignalProtocol,
-  generatePreKeyBundle,
   processPreKeyBundle,
 } from "@/lib/signal-protocol";
 import storage from "@/lib/storage";
-import { IdentityKey, Room, StoredRoom } from "@/lib/types";
+import { IdentityKey, Room } from "@/lib/types";
 import { KeyExchangeInvite } from "@/lib/key-exchange";
 
 interface RoomManagerProps {
@@ -137,8 +133,8 @@ export default function RoomManager({ identity, onRoomJoined }: RoomManagerProps
       setCurrentStep("list");
       resetForm();
       
-    } catch (error) {
-      setError(`Failed to join room: ${error}`);
+    } catch {
+      setError(`Failed to join room`);
     } finally {
       setIsLoading(false);
     }
@@ -288,7 +284,7 @@ export default function RoomManager({ identity, onRoomJoined }: RoomManagerProps
           </div>
 
           <div className="text-xs text-gray-400 bg-gray-900 p-3 rounded">
-            <strong>Note:</strong> You'll receive a shareable invite link after creation.
+            <strong>Note:</strong> You&apos;ll receive a shareable invite link after creation.
           </div>
 
           <div className="flex space-x-3">

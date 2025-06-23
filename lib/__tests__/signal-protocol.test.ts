@@ -13,12 +13,11 @@ import {
   deleteSession,
   deleteAllSessions,
   getDeviceIds,
-  SimpleSignalProtocolStore
 } from "../signal-protocol";
 import { createIdentity } from "../crypto";
 
 // Mock IndexedDB
-require('fake-indexeddb/auto');
+import 'fake-indexeddb/auto';
 
 describe("Signal Protocol Tests", () => {
   beforeAll(async () => {
@@ -150,8 +149,7 @@ describe("Signal Protocol Tests", () => {
   });
 
   describe("Message Encryption and Decryption", () => {
-    let aliceIdentity: any;
-    let bobIdentity: any;
+    let bobIdentity: import("../types").IdentityKey;
     const bobAddress = "bob@example.com";
     const bobDeviceId = 1;
 
@@ -159,7 +157,7 @@ describe("Signal Protocol Tests", () => {
       const alicePassphrase = "alice-passphrase-123";
       const bobPassphrase = "bob-passphrase-456";
 
-      aliceIdentity = await createIdentity(alicePassphrase);
+      await createIdentity(alicePassphrase);
       bobIdentity = await createIdentity(bobPassphrase);
 
       // Establish session
@@ -244,7 +242,7 @@ describe("Signal Protocol Tests", () => {
   });
 
   describe("Session Management", () => {
-    let bobIdentity: any;
+    let bobIdentity: import("../types").IdentityKey;
     const bobAddress = "bob@example.com";
     const bobDeviceId = 1;
 

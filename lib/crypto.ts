@@ -12,8 +12,7 @@ import {
   CryptoError,
 } from "./types";
 import storage from "./storage";
-import { CRYPTO, STORAGE, ERRORS } from "./constants";
-import { validatePassphrase } from "./utils/validation";
+import { CRYPTO, ERRORS } from "./constants";
 
 // Sodium instance
 let sodium: typeof _sodium;
@@ -122,7 +121,7 @@ export async function decryptPrivateKey(
     sodium.memzero(key);
 
     return privateKey;
-  } catch (error) {
+  } catch {
     throw new CryptoError(ERRORS.INVALID_PASSPHRASE);
   }
 }
