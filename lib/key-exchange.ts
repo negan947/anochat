@@ -10,14 +10,10 @@ import {
   PreKeyBundle,
   IdentityKey,
   CryptoError,
-  HexString,
-  Base64String
 } from "./types";
 import {
   uint8ArrayToBase64,
   base64ToUint8Array,
-  uint8ArrayToHex,
-  hexToUint8Array,
   generateFingerprint
 } from "./crypto";
 import { generatePreKeyBundle } from "./signal-protocol";
@@ -312,8 +308,8 @@ export function parseKeyExchangeLink(url: string): KeyExchangeInvite {
     }
 
     return deserializeKeyExchange(serialized);
-  } catch (error) {
-    throw new CryptoError(`Failed to parse key exchange link: ${error}`);
+  } catch {
+    throw new CryptoError(`Failed to parse key exchange link`);
   }
 }
 
@@ -352,7 +348,6 @@ export function verifyFingerprints(fingerprint1: string, fingerprint2: string): 
 export async function generateRoomInvite(
   identity: IdentityKey,
   roomId: string,
-  roomName?: string
 ): Promise<{
   invite: KeyExchangeInvite;
   qrCode: string;

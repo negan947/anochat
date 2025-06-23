@@ -123,20 +123,22 @@ export const CONSTANTS = {
 } as const;
 
 // Type guards
-export function isEncryptedMessage(obj: any): obj is EncryptedMessage {
+export function isEncryptedMessage(obj: unknown): obj is EncryptedMessage {
+  const msg = obj as EncryptedMessage;
   return (
-    obj &&
-    typeof obj.room_id === "string" &&
-    typeof obj.sender_fingerprint === "string" &&
-    obj.ciphertext instanceof Uint8Array &&
-    obj.header instanceof Uint8Array
+    !!msg &&
+    typeof msg.room_id === "string" &&
+    typeof msg.sender_fingerprint === "string" &&
+    msg.ciphertext instanceof Uint8Array &&
+    msg.header instanceof Uint8Array
   );
 }
 
-export function isKeyPair(obj: any): obj is KeyPair {
+export function isKeyPair(obj: unknown): obj is KeyPair {
+  const pair = obj as KeyPair;
   return (
-    obj &&
-    obj.publicKey instanceof Uint8Array &&
-    obj.privateKey instanceof Uint8Array
+    !!pair &&
+    pair.publicKey instanceof Uint8Array &&
+    pair.privateKey instanceof Uint8Array
   );
 } 

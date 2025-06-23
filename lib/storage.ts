@@ -12,7 +12,7 @@ import {
   StorageError,
 } from "./types";
 
-import { STORAGE, ERRORS } from "./constants";
+import { STORAGE } from "./constants";
 
 // Add Signal Protocol storage interfaces
 interface StoredPreKey {

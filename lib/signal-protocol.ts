@@ -6,14 +6,12 @@
 
 import { 
   PreKeyBundle, 
-  SignalSession, 
   IdentityKey,
   CryptoError 
 } from "./types";
 import storage from "./storage";
 import { 
   initCrypto,
-  generateIdentityKey,
   randomBytes,
   uint8ArrayToBase64,
   base64ToUint8Array,
@@ -411,9 +409,9 @@ export async function hasSession(
     const sessionId = `${remoteAddress}.${deviceId}`;
     const session = await protocolStore.loadSession(sessionId);
     return !!session;
-  } catch (error) {
-    return false;
-  }
+      } catch {
+      return false;
+    }
 }
 
 /**

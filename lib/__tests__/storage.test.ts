@@ -169,7 +169,7 @@ describe('Storage Module', () => {
     });
 
     it('should save room without name', async () => {
-      const id = await storage.saveRoom(mockRoom.room_id);
+      await storage.saveRoom(mockRoom.room_id);
       const room = await storage.getRoom(mockRoom.room_id);
       
       expect(room?.name).toBeUndefined();
