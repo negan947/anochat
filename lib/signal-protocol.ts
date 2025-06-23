@@ -223,7 +223,10 @@ export async function generatePreKeyBundle(
     await protocolStore.storePreKey(preKeyId, preKeyPair);
 
     return {
-      identityKey: identity.publicKey,
+      // Publish the Ed25519 public key so peers can verify our signatures.
+      // Peers can convert this key to a Curve25519 key when they need to perform
+      // Diffie-Hellman operations (see processPreKeyBundle).
+      identityKey: edKeyPair.publicKey,
       signedPreKey: {
         keyId: signedPreKeyId,
         publicKey: signedPreKeyPair.publicKey,
@@ -263,6 +266,12 @@ export async function processPreKeyBundle(
       throw new CryptoError("Invalid signature on signed pre-key");
     }
 
+    // Convert the peer's Ed25519 identity key to a Curve25519 key so we can use
+    // it in Diffie-Hellman computations.
+    const peerCurve25519IdentityKey = sodium.crypto_sign_ed25519_pk_to_curve25519(
+      preKeyBundle.identityKey
+    );
+
     // Get our identity
     const ourIdentity = await protocolStore.getIdentityKeyPair();
     
@@ -273,8 +282,8 @@ export async function processPreKeyBundle(
     // DH1 = DH(IK_A, SPK_B)
     const dh1 = sodium.crypto_scalarmult(ourIdentity.privateKey, preKeyBundle.signedPreKey.publicKey);
     
-    // DH2 = DH(EK_A, IK_B)  
-    const dh2 = sodium.crypto_scalarmult(ephemeralKey.privateKey, preKeyBundle.identityKey);
+    // DH2 = DH(EK_A, IK_B)  (use converted Curve25519 key)
+    const dh2 = sodium.crypto_scalarmult(ephemeralKey.privateKey, peerCurve25519IdentityKey);
     
     // DH3 = DH(EK_A, SPK_B)
     const dh3 = sodium.crypto_scalarmult(ephemeralKey.privateKey, preKeyBundle.signedPreKey.publicKey);
