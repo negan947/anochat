@@ -120,7 +120,7 @@ export default function BurnNotice({ onComplete }: BurnNoticeProps) {
             <li>• This action cannot be undone</li>
             <li>• You will lose access to all rooms</li>
             <li>• All message history will be lost</li>
-            <li>• You'll need to create a new identity</li>
+            <li>• You&apos;ll need to create a new identity</li>
           </ul>
         </div>
 
@@ -130,7 +130,7 @@ export default function BurnNotice({ onComplete }: BurnNoticeProps) {
             or need to maintain plausible deniability.
           </p>
           <p className="font-semibold">
-            Only proceed if you're absolutely certain.
+            Only proceed if you&apos;re absolutely certain.
           </p>
         </div>
 

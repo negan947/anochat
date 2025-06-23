@@ -4,7 +4,6 @@ import { useState } from "react";
 import QRCode from "react-qr-code";
 import { IdentityKey } from "@/lib/types";
 import { getOrCreateSessionId } from "@/lib/crypto";
-import storage from "@/lib/storage";
 
 interface IdentityProps {
   identity: IdentityKey;

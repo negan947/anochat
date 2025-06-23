@@ -6,7 +6,6 @@ import {
   createIdentity,
   loadIdentity,
   validatePassphrase,
-  isCryptoInitialized,
 } from "@/lib/crypto";
 import storage from "@/lib/storage";
 import { IdentityKey, StoredIdentity } from "@/lib/types";
@@ -27,6 +26,7 @@ export default function KeyManager({ onIdentityLoaded }: KeyManagerProps) {
 
   useEffect(() => {
     initializeSystem();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const initializeSystem = async () => {

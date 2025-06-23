@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from "react";
 import { decryptMessage } from "@/lib/signal-protocol";
-import { generateFingerprint } from "@/lib/crypto";
 
 interface Message {
   id: string;

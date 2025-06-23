@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import MessageList from "./MessageList";
 import MessageInput from "./MessageInput";
 import { IdentityKey } from "@/lib/types";
@@ -31,7 +31,7 @@ export default function ChatInterface({
   const [messages, setMessages] = useState<Message[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [participants, setParticipants] = useState<string[]>([]);
-  const [typingUsers, setTypingUsers] = useState<string[]>([]);
+  const [typingUsers] = useState<string[]>([]);
   const [connectionError, setConnectionError] = useState("");
 
   // For demo purposes, we'll simulate a recipient fingerprint
@@ -49,6 +49,7 @@ export default function ChatInterface({
     return () => {
       // Clean up any subscriptions or connections
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId]);
 
   const initializeChatRoom = async () => {
