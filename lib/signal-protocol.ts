@@ -100,7 +100,10 @@ class SimpleSignalProtocolStore {
   }
 
   async storeSession(identifier: string, sessionData: Uint8Array): Promise<void> {
-    await storage.storeSignalSession(identifier, sessionData.buffer);
+    // Convert Uint8Array to ArrayBuffer
+    const buffer = new ArrayBuffer(sessionData.length);
+    new Uint8Array(buffer).set(sessionData);
+    await storage.storeSignalSession(identifier, buffer);
   }
 
   async loadSession(identifier: string): Promise<Uint8Array | undefined> {
@@ -121,7 +124,10 @@ class SimpleSignalProtocolStore {
   }
 
   async storeIdentity(identifier: string, identityKey: Uint8Array): Promise<boolean> {
-    await storage.storeIdentityKey(identifier, identityKey.buffer);
+    // Convert Uint8Array to ArrayBuffer
+    const buffer = new ArrayBuffer(identityKey.length);
+    new Uint8Array(buffer).set(identityKey);
+    await storage.storeIdentityKey(identifier, buffer);
     return true;
   }
 

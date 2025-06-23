@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { QRCodeSVG } from "qrcode.react";
+import QRCode from "react-qr-code";
 import { 
   generateRoomId,
   generateFingerprint,
@@ -19,7 +19,8 @@ import {
   processPreKeyBundle,
 } from "@/lib/signal-protocol";
 import storage from "@/lib/storage";
-import { IdentityKey, Room, KeyExchangeInvite } from "@/lib/types";
+import { IdentityKey, Room, StoredRoom } from "@/lib/types";
+import { KeyExchangeInvite } from "@/lib/key-exchange";
 
 interface RoomManagerProps {
   identity: IdentityKey;
@@ -51,7 +52,13 @@ export default function RoomManager({ identity, onRoomJoined }: RoomManagerProps
 
   const loadActiveRooms = async () => {
     try {
-      const rooms = await storage.getAllRooms();
+      const storedRooms = await storage.getAllRooms();
+      const rooms: Room[] = storedRooms.map(sr => ({
+        id: sr.room_id,
+        name: sr.name,
+        participants: sr.participants,
+        createdAt: sr.joinedAt
+      }));
       setActiveRooms(rooms);
     } catch (error) {
       setError(`Failed to load rooms: ${error}`);
@@ -66,13 +73,11 @@ export default function RoomManager({ identity, onRoomJoined }: RoomManagerProps
       const roomId = generateRoomId();
       
       // Save room to storage
-      await storage.saveRoom({
+      await storage.saveRoom(
         roomId,
-        name: roomName || undefined,
-        createdAt: new Date(),
-        lastMessageAt: new Date(),
-        participants: [identity.fingerprint],
-      });
+        roomName || undefined,
+        [identity.fingerprint]
+      );
 
       // Generate room invite
       const invite = await generateRoomInvite(identity, roomId, roomName || undefined);
@@ -106,29 +111,27 @@ export default function RoomManager({ identity, onRoomJoined }: RoomManagerProps
       }
 
       // Validate invite
-      if (!invite.preKeyBundle || !invite.createdBy) {
+      if (!invite.preKeyBundle || !invite.senderFingerprint) {
         throw new Error("Invalid invite format");
       }
 
       // Process the pre-key bundle to establish session
       await processPreKeyBundle(
-        invite.createdBy,
+        invite.senderFingerprint,
         1, // device ID
         invite.preKeyBundle
       );
 
       // Save room if provided
       if (invite.roomId) {
-        await storage.saveRoom({
-          roomId: invite.roomId,
-          name: invite.roomName,
-          createdAt: new Date(),
-          lastMessageAt: new Date(),
-          participants: [identity.fingerprint, invite.createdBy],
-        });
+        await storage.saveRoom(
+          invite.roomId,
+          undefined, // No room name in invite
+          [identity.fingerprint, invite.senderFingerprint]
+        );
         
         await loadActiveRooms();
-        onRoomJoined(invite.roomId, invite.roomName);
+        onRoomJoined(invite.roomId, undefined);
       }
 
       setCurrentStep("list");
@@ -142,7 +145,7 @@ export default function RoomManager({ identity, onRoomJoined }: RoomManagerProps
   };
 
   const handleJoinExistingRoom = (room: Room) => {
-    onRoomJoined(room.roomId, room.name);
+    onRoomJoined(room.id, room.name);
   };
 
   const resetForm = () => {
@@ -183,7 +186,7 @@ export default function RoomManager({ identity, onRoomJoined }: RoomManagerProps
               <div className="space-y-2 mb-4">
                 {activeRooms.map((room) => (
                   <div
-                    key={room.roomId}
+                    key={room.id}
                     className="bg-gray-700 p-3 rounded cursor-pointer hover:bg-gray-600 transition-colors"
                     onClick={() => handleJoinExistingRoom(room)}
                   >
@@ -197,7 +200,7 @@ export default function RoomManager({ identity, onRoomJoined }: RoomManagerProps
                         </div>
                       </div>
                       <div className="text-xs text-gray-400">
-                        {new Date(room.lastMessageAt).toLocaleDateString()}
+                        {new Date(room.createdAt).toLocaleDateString()}
                       </div>
                     </div>
                   </div>
@@ -245,16 +248,14 @@ export default function RoomManager({ identity, onRoomJoined }: RoomManagerProps
                 </button>
               </div>
 
-              {showQR && (
-                <div className="bg-white p-3 rounded text-center">
-                  <QRCodeSVG
-                    value={generatedInvite}
-                    size={120}
-                    level="M"
-                    includeMargin={true}
-                  />
-                </div>
-              )}
+                             {showQR && (
+                 <div className="bg-white p-3 rounded text-center">
+                   <QRCode
+                     value={generatedInvite}
+                     size={120}
+                   />
+                 </div>
+               )}
               
               <button
                 onClick={() => setGeneratedInvite("")}

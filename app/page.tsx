@@ -1,227 +1,194 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-  initCrypto,
-  generateIdentityKey,
-  generateFingerprint,
-  createIdentity,
-  loadIdentity,
-  generateSessionId,
-  getOrCreateSessionId,
-  validatePassphrase,
-  isCryptoInitialized,
-} from "@/lib/crypto";
+import KeyManager from "@/components/KeyManager";
+import Identity from "@/components/Identity";
+import RoomManager from "@/components/RoomManager";
+import ChatInterface from "@/components/ChatInterface";
+import BurnNotice from "@/components/BurnNotice";
+import { IdentityKey } from "@/lib/types";
 import storage from "@/lib/storage";
 
-export default function CryptoTestPage() {
-  const [isInitialized, setIsInitialized] = useState(false);
-  const [sessionId, setSessionId] = useState("");
-  const [passphrase, setPassphrase] = useState("");
-  const [testResults, setTestResults] = useState<string[]>([]);
-  const [currentIdentity, setCurrentIdentity] = useState<any>(null);
-  const [storedIdentities, setStoredIdentities] = useState<any[]>([]);
+type AppState = "loading" | "identity" | "menu" | "chat" | "burn";
+
+export default function AnoChat() {
+  const [appState, setAppState] = useState<AppState>("loading");
+  const [currentIdentity, setCurrentIdentity] = useState<IdentityKey | null>(null);
+  const [currentRoomId, setCurrentRoomId] = useState<string>("");
+  const [currentRoomName, setCurrentRoomName] = useState<string>("");
+  const [error, setError] = useState<string>("");
 
   useEffect(() => {
-    // Initialize crypto on page load
-    initializeCrypto();
+    // Check if we have any stored identities on startup
+    checkForExistingIdentities();
   }, []);
 
-  const initializeCrypto = async () => {
-    try {
-      await initCrypto();
-      setIsInitialized(true);
-      addTestResult("✅ Crypto library initialized successfully");
-      
-      // Get or create session ID
-      const sid = getOrCreateSessionId();
-      setSessionId(sid);
-      addTestResult(`✅ Session ID: ${sid}`);
-      
-      // Load stored identities
-      await loadStoredIdentities();
-    } catch (error) {
-      addTestResult(`❌ Failed to initialize crypto: ${error}`);
-    }
-  };
-
-  const loadStoredIdentities = async () => {
+  const checkForExistingIdentities = async () => {
     try {
       const identities = await storage.getAllIdentities();
-      setStoredIdentities(identities);
-      addTestResult(`✅ Loaded ${identities.length} stored identities`);
-    } catch (error) {
-      addTestResult(`❌ Failed to load identities: ${error}`);
-    }
-  };
-
-  const addTestResult = (result: string) => {
-    setTestResults((prev) => [...prev, `[${new Date().toLocaleTimeString()}] ${result}`]);
-  };
-
-  const testKeyGeneration = () => {
-    try {
-      const keypair = generateIdentityKey();
-      const fingerprint = generateFingerprint(keypair.publicKey);
-      addTestResult("✅ Generated new keypair");
-      addTestResult(`   Public key: ${keypair.publicKey.slice(0, 8)}...`);
-      addTestResult(`   Private key: ${keypair.privateKey.slice(0, 8)}...`);
-      addTestResult(`   Fingerprint: ${fingerprint}`);
-    } catch (error) {
-      addTestResult(`❌ Key generation failed: ${error}`);
-    }
-  };
-
-  const testCreateIdentity = async () => {
-    if (!passphrase) {
-      addTestResult("❌ Please enter a passphrase first");
-      return;
-    }
-
-    const validation = validatePassphrase(passphrase);
-    if (!validation.isValid) {
-      addTestResult(`❌ Weak passphrase: ${validation.feedback.join(", ")}`);
-      return;
-    }
-
-    try {
-      const identity = await createIdentity(passphrase);
-      setCurrentIdentity(identity);
-      addTestResult("✅ Created and stored new identity");
-      addTestResult(`   Fingerprint: ${identity.fingerprint}`);
-      await loadStoredIdentities();
-    } catch (error) {
-      addTestResult(`❌ Failed to create identity: ${error}`);
-    }
-  };
-
-  const testLoadIdentity = async (fingerprint: string) => {
-    if (!passphrase) {
-      addTestResult("❌ Please enter a passphrase first");
-      return;
-    }
-
-    try {
-      const identity = await loadIdentity(fingerprint, passphrase);
-      if (identity) {
-        setCurrentIdentity(identity);
-        addTestResult(`✅ Loaded identity: ${fingerprint}`);
+      if (identities.length > 0) {
+        setAppState("identity"); // Show identity manager to load existing
       } else {
-        addTestResult(`❌ Identity not found: ${fingerprint}`);
+        setAppState("identity"); // Show identity manager to create new
       }
     } catch (error) {
-      addTestResult(`❌ Failed to load identity: ${error}`);
+      setError(`Failed to check identities: ${error}`);
+      setAppState("identity");
     }
   };
 
-  const testBurnEverything = async () => {
-    if (confirm("Are you sure you want to delete all data? This cannot be undone!")) {
-      try {
-        await storage.burnEverything();
-        setCurrentIdentity(null);
-        setStoredIdentities([]);
-        setTestResults([]);
-        addTestResult("🔥 All data burned successfully");
-        
-        // Generate new session ID
-        const newSid = generateSessionId();
-        setSessionId(newSid);
-        sessionStorage.setItem("anochat_session_id", newSid);
-      } catch (error) {
-        addTestResult(`❌ Failed to burn data: ${error}`);
-      }
-    }
+  const handleIdentityLoaded = (identity: IdentityKey) => {
+    setCurrentIdentity(identity);
+    setAppState("menu");
+    setError("");
   };
+
+  const handleRoomJoined = (roomId: string, roomName?: string) => {
+    setCurrentRoomId(roomId);
+    setCurrentRoomName(roomName || "");
+    setAppState("chat");
+  };
+
+  const handleLeaveRoom = () => {
+    setCurrentRoomId("");
+    setCurrentRoomName("");
+    setAppState("menu");
+  };
+
+  const handleBurnNotice = () => {
+    setAppState("burn");
+  };
+
+  const handleBurnComplete = () => {
+    // Reset everything
+    setCurrentIdentity(null);
+    setCurrentRoomId("");
+    setCurrentRoomName("");
+    setError("");
+    setAppState("identity");
+  };
+
+  const handleShowIdentity = () => {
+    // Toggle between room manager and identity view
+    setAppState(appState === "identity" ? "menu" : "identity");
+  };
+
+  if (appState === "loading") {
+    return (
+      <div className="min-h-screen bg-gray-900 text-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto mb-4"></div>
+          <p className="text-gray-300">Loading AnoChat...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (appState === "burn") {
+    return <BurnNotice onComplete={handleBurnComplete} />;
+  }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-100 p-8">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8">AnoChat Crypto Test Suite</h1>
-        
-        <div className="bg-gray-800 rounded-lg p-6 mb-6">
-          <h2 className="text-xl font-semibold mb-4">System Status</h2>
-          <div className="space-y-2">
-            <p>Crypto Initialized: {isInitialized ? "✅ Yes" : "❌ No"}</p>
-            <p>Session ID: <code className="bg-gray-700 px-2 py-1 rounded text-sm">{sessionId || "Not generated"}</code></p>
-            <p>Current Identity: <code className="bg-gray-700 px-2 py-1 rounded text-sm">{currentIdentity?.fingerprint || "None"}</code></p>
+    <div className="min-h-screen bg-gray-900 text-gray-100">
+      {/* Header */}
+      <div className="bg-gray-800 border-b border-gray-700 p-4">
+        <div className="max-w-4xl mx-auto flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+              AnoChat
+            </h1>
+            <div className="text-xs text-gray-400">
+              Anonymous • Encrypted • Zero-Knowledge
+            </div>
           </div>
-        </div>
-
-        <div className="bg-gray-800 rounded-lg p-6 mb-6">
-          <h2 className="text-xl font-semibold mb-4">Passphrase</h2>
-          <input
-            type="password"
-            value={passphrase}
-            onChange={(e) => setPassphrase(e.target.value)}
-            placeholder="Enter passphrase for key encryption"
-            className="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 mb-2"
-          />
-          <p className="text-sm text-gray-400">Used for encrypting/decrypting private keys</p>
-        </div>
-
-        <div className="bg-gray-800 rounded-lg p-6 mb-6">
-          <h2 className="text-xl font-semibold mb-4">Test Operations</h2>
-          <div className="grid grid-cols-2 gap-4">
-            <button
-              onClick={testKeyGeneration}
-              disabled={!isInitialized}
-              className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 px-4 py-2 rounded"
-            >
-              Test Key Generation
-            </button>
-            <button
-              onClick={testCreateIdentity}
-              disabled={!isInitialized}
-              className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 px-4 py-2 rounded"
-            >
-              Create & Store Identity
-            </button>
-            <button
-              onClick={testBurnEverything}
-              disabled={!isInitialized}
-              className="bg-red-600 hover:bg-red-700 disabled:bg-gray-600 px-4 py-2 rounded col-span-2"
-            >
-              🔥 Burn Everything
-            </button>
-          </div>
-        </div>
-
-        <div className="bg-gray-800 rounded-lg p-6 mb-6">
-          <h2 className="text-xl font-semibold mb-4">Stored Identities</h2>
-          {storedIdentities.length === 0 ? (
-            <p className="text-gray-400">No identities stored</p>
-          ) : (
-            <div className="space-y-2">
-              {storedIdentities.map((identity) => (
-                <div key={identity.fingerprint} className="flex items-center justify-between bg-gray-700 p-3 rounded">
-                  <div>
-                    <p className="text-sm font-mono">{identity.fingerprint}</p>
-                    <p className="text-xs text-gray-400">Created: {new Date(identity.createdAt).toLocaleString()}</p>
-                  </div>
-                  <button
-                    onClick={() => testLoadIdentity(identity.fingerprint)}
-                    className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm"
-                  >
-                    Load
-                  </button>
-                </div>
-              ))}
+          
+          {currentIdentity && appState !== "identity" && (
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={handleShowIdentity}
+                className="text-gray-400 hover:text-gray-300 transition-colors text-sm"
+              >
+                👤 Identity
+              </button>
+              {appState === "chat" && (
+                <button
+                  onClick={handleLeaveRoom}
+                  className="text-gray-400 hover:text-gray-300 transition-colors text-sm"
+                >
+                  ← Back
+                </button>
+              )}
             </div>
           )}
         </div>
+      </div>
 
-        <div className="bg-gray-800 rounded-lg p-6">
-          <h2 className="text-xl font-semibold mb-4">Test Results</h2>
-          <div className="bg-gray-900 rounded p-4 h-64 overflow-y-auto">
-            {testResults.length === 0 ? (
-              <p className="text-gray-400">No test results yet</p>
-            ) : (
-              <div className="space-y-1 font-mono text-sm">
-                {testResults.map((result, index) => (
-                  <p key={index} className="text-green-400">{result}</p>
-                ))}
+      {/* Error Display */}
+      {error && (
+        <div className="bg-red-900/50 border-b border-red-500 text-red-200 px-4 py-3">
+          <div className="max-w-4xl mx-auto">
+            {error}
+          </div>
+        </div>
+      )}
+
+      {/* Main Content */}
+      <div className="max-w-4xl mx-auto">
+        {appState === "identity" && (
+          <div className="p-8">
+            {currentIdentity ? (
+              <div className="grid md:grid-cols-2 gap-8">
+                <KeyManager onIdentityLoaded={handleIdentityLoaded} />
+                <Identity 
+                  identity={currentIdentity} 
+                  onBurnNotice={handleBurnNotice}
+                />
               </div>
+            ) : (
+              <KeyManager onIdentityLoaded={handleIdentityLoaded} />
             )}
+          </div>
+        )}
+
+        {appState === "menu" && currentIdentity && (
+          <div className="p-8">
+            <div className="grid md:grid-cols-2 gap-8">
+              <RoomManager 
+                identity={currentIdentity} 
+                onRoomJoined={handleRoomJoined}
+              />
+              <Identity 
+                identity={currentIdentity} 
+                onBurnNotice={handleBurnNotice}
+              />
+            </div>
+          </div>
+        )}
+
+        {appState === "chat" && currentIdentity && (
+          <ChatInterface
+            identity={currentIdentity}
+            roomId={currentRoomId}
+            roomName={currentRoomName}
+            onLeaveRoom={handleLeaveRoom}
+          />
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="bg-gray-800 border-t border-gray-700 p-4 mt-8">
+        <div className="max-w-4xl mx-auto text-center text-xs text-gray-500">
+          <div className="flex items-center justify-center space-x-4">
+            <span>🔒 End-to-End Encrypted</span>
+            <span>•</span>
+            <span>🔐 Signal Protocol</span>
+            <span>•</span>
+            <span>👻 Anonymous</span>
+            <span>•</span>
+            <span>🌐 Zero-Knowledge</span>
+          </div>
+          <div className="mt-2">
+            No data is stored on servers • Your privacy is guaranteed
           </div>
         </div>
       </div>

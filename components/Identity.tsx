@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { QRCodeSVG } from "qrcode.react";
+import QRCode from "react-qr-code";
 import { IdentityKey } from "@/lib/types";
 import { getOrCreateSessionId } from "@/lib/crypto";
 import storage from "@/lib/storage";
@@ -105,14 +105,12 @@ export default function Identity({ identity, onBurnNotice }: IdentityProps) {
         {showQR && (
           <div className="bg-gray-700 rounded-lg p-4 text-center">
             <h3 className="text-sm font-medium text-gray-300 mb-3">Identity QR Code</h3>
-            <div className="bg-white p-4 rounded inline-block">
-              <QRCodeSVG
-                value={identity.fingerprint}
-                size={160}
-                level="M"
-                includeMargin={true}
-              />
-            </div>
+                         <div className="bg-white p-4 rounded inline-block">
+               <QRCode
+                 value={identity.fingerprint}
+                 size={160}
+               />
+             </div>
             <p className="text-xs text-gray-400 mt-2">
               Scan to share your identity fingerprint
             </p>
