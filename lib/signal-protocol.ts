@@ -343,7 +343,7 @@ export async function encryptMessage(
   remoteAddress: string,
   deviceId: number,
   plaintext: string
-): Promise<{ type: number; body: string }> {
+): Promise<{ type: number; body: string; ek?: string; ik?: string }> {
   if (!protocolStore) {
     throw new CryptoError("Signal Protocol not initialized. Call initSignalProtocol() first.");
   }
@@ -370,8 +370,10 @@ export async function encryptMessage(
     messageBytes.set(ciphertext, nonce.length);
     
     return {
-      type: 1, // WhisperMessage type
-      body: uint8ArrayToBase64(messageBytes)
+      type: 1,
+      body: uint8ArrayToBase64(messageBytes),
+      ek: uint8ArrayToBase64(sessionData.slice(32, 64)),
+      ik: uint8ArrayToBase64((await protocolStore.getIdentityKeyPair()).publicKey)
     };
   } catch (error) {
     throw new CryptoError(`Failed to encrypt message: ${error}`);
@@ -384,7 +386,7 @@ export async function encryptMessage(
 export async function decryptMessage(
   remoteAddress: string,
   deviceId: number,
-  ciphertext: { type: number; body: string }
+  ciphertext: { type: number; body: string; ek?: string; ik?: string }
 ): Promise<string> {
   if (!protocolStore) {
     throw new CryptoError("Signal Protocol not initialized. Call initSignalProtocol() first.");
@@ -395,7 +397,73 @@ export async function decryptMessage(
     const sessionData = await protocolStore.loadSession(sessionId);
     
     if (!sessionData) {
-      throw new CryptoError("No session found. Cannot decrypt message.");
+      // Attempt to derive a session from the peer-supplied keys (bootstrap).
+      if (ciphertext.ek && ciphertext.ik) {
+        const peerEphemeralKey = base64ToUint8Array(ciphertext.ek);
+        const peerIdentityKeyEd = base64ToUint8Array(ciphertext.ik);
+
+        // Convert peer identity key to Curve25519
+        const peerIdentityKey = sodium.crypto_sign_ed25519_pk_to_curve25519(
+          peerIdentityKeyEd
+        );
+
+        // Load OUR keys
+        const ourIdentity = await protocolStore.getIdentityKeyPair();
+
+        // We assume the most recently generated signed/pre-key pair was used.
+        const allSignedIds = await storage.getAllPreKeyIds();
+        const signedPreKeyId = allSignedIds.length > 0 ? allSignedIds[allSignedIds.length - 1] : undefined;
+        if (!signedPreKeyId) {
+          throw new CryptoError("No signed pre-key available to complete handshake");
+        }
+        const ourSignedPreKey = await protocolStore.loadSignedPreKey(signedPreKeyId);
+        if (!ourSignedPreKey) {
+          throw new CryptoError("Signed pre-key not found in store");
+        }
+
+        // If we still have a one-time pre-key, load it; otherwise skip DH4.
+        const preKeyIds = await storage.getAllPreKeyIds();
+        const ourPreKeyId = preKeyIds.find(id => id !== signedPreKeyId);
+        const ourPreKeyPair = ourPreKeyId ? await protocolStore.loadPreKey(ourPreKeyId) : null;
+
+        // Perform the symmetric DH calculations (Bob side)
+        const dh1 = sodium.crypto_scalarmult(ourSignedPreKey.privateKey, peerIdentityKey); // DH(SPK_B, IK_A)
+        const dh2 = sodium.crypto_scalarmult(ourIdentity.privateKey, peerEphemeralKey);   // DH(IK_B, EK_A)
+        const dh3 = sodium.crypto_scalarmult(ourSignedPreKey.privateKey, peerEphemeralKey); // DH(SPK_B, EK_A)
+
+        let dh4: Uint8Array | null = null;
+        if (ourPreKeyPair) {
+          dh4 = sodium.crypto_scalarmult(ourPreKeyPair.privateKey, peerEphemeralKey);
+        }
+
+        // Combine DH outputs
+        const dhOutputs = [dh1, dh2, dh3];
+        if (dh4) dhOutputs.push(dh4);
+
+        const combinedLength = dhOutputs.reduce((s, d) => s + d.length, 0);
+        const combined = new Uint8Array(combinedLength);
+        let offset = 0;
+        for (const dh of dhOutputs) {
+          combined.set(dh, offset); offset += dh.length;
+        }
+
+        const sharedSecret = sodium.crypto_generichash(32, combined);
+        const newSessionData = new Uint8Array(64);
+        newSessionData.set(sharedSecret, 0);
+        newSessionData.set(peerEphemeralKey, 32);
+
+        const sessionId = `${remoteAddress}.${deviceId}`;
+        await protocolStore.storeSession(sessionId, newSessionData);
+
+        sessionData = newSessionData;
+
+        // Remove one-time pre-key so it cannot be reused
+        if (ourPreKeyId) {
+          await protocolStore.removePreKey(ourPreKeyId);
+        }
+      } else {
+        throw new CryptoError("No session found and no bootstrap keys provided.");
+      }
     }
 
     // Extract session key (simplified)
