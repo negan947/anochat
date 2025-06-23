@@ -21,9 +21,7 @@ interface MessageListProps {
 }
 
 export default function MessageList({ 
-  messages, 
-  currentUserFingerprint, 
-  roomId 
+  messages,
 }: MessageListProps) {
   const [decryptedMessages, setDecryptedMessages] = useState<Map<string, string>>(new Map());
   const [decryptionErrors, setDecryptionErrors] = useState<Map<string, string>>(new Map());
