@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Offline - AnoChat</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: #0f172a;
+            color: #f8fafc;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        
+        .container {
+            text-align: center;
+            max-width: 400px;
+            padding: 2rem;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+        
+        .icon {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 1.5rem;
+            opacity: 0.7;
+        }
+        
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #cbd5e1;
+        }
+        
+        p {
+            color: #94a3b8;
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+        }
+        
+        .features {
+            background: #334155;
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1.5rem 0;
+            text-align: left;
+        }
+        
+        .feature {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+            color: #cbd5e1;
+        }
+        
+        .feature:last-child {
+            margin-bottom: 0;
+        }
+        
+        .feature-icon {
+            margin-right: 0.5rem;
+        }
+        
+        .retry-btn {
+            background: #d946ef;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            font-size: 0.875rem;
+        }
+        
+        .retry-btn:hover {
+            background: #c026d3;
+        }
+        
+        .retry-btn:active {
+            transform: scale(0.98);
+        }
+        
+        .status {
+            margin-top: 1rem;
+            font-size: 0.75rem;
+            color: #64748b;
+        }
+        
+        .online {
+            color: #10b981;
+        }
+        
+        .offline {
+            color: #f59e0b;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon pulse">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z" />
+            </svg>
+        </div>
+        
+        <h1>You're offline</h1>
+        <p>Don't worry - your anonymity and encrypted data are preserved even when offline.</p>
+        
+        <div class="features">
+            <div class="feature">
+                <span class="feature-icon">🔒</span>
+                <span>End-to-end encryption maintained</span>
+            </div>
+            <div class="feature">
+                <span class="feature-icon">👻</span>
+                <span>Anonymous session preserved</span>
+            </div>
+            <div class="feature">
+                <span class="feature-icon">💾</span>
+                <span>Local data securely stored</span>
+            </div>
+            <div class="feature">
+                <span class="feature-icon">🔄</span>
+                <span>Messages will sync when online</span>
+            </div>
+        </div>
+        
+        <button class="retry-btn" onclick="checkConnection()">
+            Check Connection
+        </button>
+        
+        <div class="status" id="status">
+            Connection status: <span id="connection-status" class="offline">Offline</span>
+        </div>
+    </div>
+
+    <script>
+        // Check online status
+        function updateConnectionStatus() {
+            const statusEl = document.getElementById('connection-status');
+            const isOnline = navigator.onLine;
+            
+            statusEl.textContent = isOnline ? 'Online' : 'Offline';
+            statusEl.className = isOnline ? 'online' : 'offline';
+            
+            if (isOnline) {
+                // Auto-reload when connection is restored
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            }
+        }
+        
+        function checkConnection() {
+            const btn = document.querySelector('.retry-btn');
+            btn.textContent = 'Checking...';
+            btn.disabled = true;
+            
+            // Try to fetch a small resource to test connectivity
+            fetch('/', { method: 'HEAD', cache: 'no-cache' })
+                .then(() => {
+                    btn.textContent = 'Connected! Reloading...';
+                    setTimeout(() => window.location.reload(), 500);
+                })
+                .catch(() => {
+                    btn.textContent = 'Still offline';
+                    setTimeout(() => {
+                        btn.textContent = 'Check Connection';
+                        btn.disabled = false;
+                    }, 1500);
+                });
+        }
+        
+        // Listen for online/offline events
+        window.addEventListener('online', updateConnectionStatus);
+        window.addEventListener('offline', updateConnectionStatus);
+        
+        // Initial status check
+        updateConnectionStatus();
+        
+        // Auto-check connection every 30 seconds
+        setInterval(() => {
+            if (!navigator.onLine) {
+                fetch('/', { method: 'HEAD', cache: 'no-cache' })
+                    .then(() => {
+                        // Connection restored, reload
+                        window.location.reload();
+                    })
+                    .catch(() => {
+                        // Still offline, do nothing
+                    });
+            }
+        }, 30000);
+    </script>
+</body>
+</html> 

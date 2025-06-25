@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { decryptMessage } from "@/lib/signal-protocol";
+import { useEffect, useRef } from "react";
+import { Card, CardContent } from "./ui/Card";
 
 interface Message {
   id: string;
@@ -16,185 +16,176 @@ interface Message {
 
 interface MessageListProps {
   messages: Message[];
-  currentUserFingerprint: string;
-  roomId: string;
 }
 
-export default function MessageList({ 
-  messages,
-}: MessageListProps) {
-  const [decryptedMessages, setDecryptedMessages] = useState<Map<string, string>>(new Map());
-  const [decryptionErrors, setDecryptionErrors] = useState<Map<string, string>>(new Map());
+export default function MessageList({ messages }: MessageListProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
-
-  // Decrypt messages as they arrive
-  useEffect(() => {
-    decryptNewMessages();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const decryptNewMessages = async () => {
-    const newDecrypted = new Map(decryptedMessages);
-    const newErrors = new Map(decryptionErrors);
-
-    for (const message of messages) {
-      // Skip if already processed or is our own message
-      if (newDecrypted.has(message.id) || newErrors.has(message.id)) {
-        continue;
-      }
-
-      try {
-        const decrypted = await decryptMessage(
-          message.senderFingerprint,
-          1, // device ID
-          message.ciphertext
-        );
-        newDecrypted.set(message.id, decrypted);
-      } catch (error) {
-        newErrors.set(message.id, `Decryption failed: ${error}`);
-      }
-    }
-
-    setDecryptedMessages(newDecrypted);
-    setDecryptionErrors(newErrors);
+  const formatTime = (date: Date) => {
+    return new Intl.DateTimeFormat('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    }).format(date);
   };
 
-  const formatTimestamp = (timestamp: Date) => {
-    const now = new Date();
-    const isToday = timestamp.toDateString() === now.toDateString();
+  const formatDate = (date: Date) => {
+    const today = new Date();
+    const messageDate = new Date(date);
     
-    if (isToday) {
-      return timestamp.toLocaleTimeString([], { 
-        hour: '2-digit', 
-        minute: '2-digit' 
-      });
-    } else {
-      return timestamp.toLocaleDateString([], { 
-        month: 'short', 
-        day: 'numeric',
-        hour: '2-digit', 
-        minute: '2-digit'
-      });
+    // Check if same day
+    if (
+      messageDate.getDate() === today.getDate() &&
+      messageDate.getMonth() === today.getMonth() &&
+      messageDate.getFullYear() === today.getFullYear()
+    ) {
+      return "Today";
     }
-  };
-
-  const formatFingerprint = (fingerprint: string) => {
-    return `${fingerprint.slice(0, 6)}...${fingerprint.slice(-4)}`;
-  };
-
-  const getMessageContent = (message: Message) => {
-    const decrypted = decryptedMessages.get(message.id);
-    const error = decryptionErrors.get(message.id);
-
-    if (decrypted) {
-      return decrypted;
-    } else if (error) {
-      return `🔒 ${error}`;
-    } else {
-      return "🔄 Decrypting...";
+    
+    // Check if yesterday
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    if (
+      messageDate.getDate() === yesterday.getDate() &&
+      messageDate.getMonth() === yesterday.getMonth() &&
+      messageDate.getFullYear() === yesterday.getFullYear()
+    ) {
+      return "Yesterday";
     }
+    
+    // Otherwise show date
+    return new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: messageDate.getFullYear() !== today.getFullYear() ? 'numeric' : undefined
+    }).format(date);
   };
 
-  const isMessageDecrypting = (message: Message) => {
-    return !decryptedMessages.has(message.id) && !decryptionErrors.has(message.id);
-  };
-
-  const hasDecryptionError = (message: Message) => {
-    return decryptionErrors.has(message.id);
-  };
+  // Group messages by date
+  const groupedMessages = messages.reduce((groups, message) => {
+    const date = formatDate(message.timestamp);
+    if (!groups[date]) {
+      groups[date] = [];
+    }
+    groups[date].push(message);
+    return groups;
+  }, {} as Record<string, Message[]>);
 
   if (messages.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-gray-900 p-8">
-        <div className="text-center text-gray-400">
-          <div className="text-4xl mb-4">💬</div>
-          <h3 className="text-lg font-medium mb-2">No messages yet</h3>
-          <p className="text-sm">Send a message to start the conversation</p>
-          <div className="mt-4 text-xs bg-gray-800 p-3 rounded-lg">
-            <div className="flex items-center justify-center space-x-2">
-              <span>🔒</span>
-              <span>End-to-end encrypted</span>
-              <span>•</span>
-              <span>Zero-knowledge</span>
+      <div className="flex-1 flex items-center justify-center p-8">
+        <Card variant="glass" className="max-w-md w-full">
+          <CardContent className="text-center py-12 space-y-4">
+            <div className="w-20 h-20 bg-anon-800/50 rounded-full flex items-center justify-center mx-auto">
+              <span className="text-4xl">💬</span>
             </div>
-          </div>
-        </div>
+            <h3 className="text-lg font-medium text-anon-200">
+              No messages yet
+            </h3>
+            <p className="text-sm text-anon-400">
+              Start the conversation with an encrypted message
+            </p>
+            <div className="flex items-center justify-center space-x-4 text-xs text-anon-500">
+              <div className="flex items-center space-x-1">
+                <span>🔒</span>
+                <span>End-to-end encrypted</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <span>👻</span>
+                <span>Anonymous</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 overflow-y-auto bg-gray-900 p-4 space-y-4">
-      {messages.map((message) => (
-        <div
-          key={message.id}
-          className={`flex ${message.isOwn ? 'justify-end' : 'justify-start'}`}
-        >
-          <div
-            className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-              message.isOwn
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-700 text-gray-100'
-            }`}
-          >
-            {/* Sender info for received messages */}
-            {!message.isOwn && (
-              <div className="text-xs text-gray-400 mb-1">
-                {formatFingerprint(message.senderFingerprint)}
+    <div className="flex-1 overflow-y-auto p-4 space-y-6">
+      <div className="max-w-4xl mx-auto">
+        {Object.entries(groupedMessages).map(([date, dateMessages]) => (
+          <div key={date} className="space-y-4">
+            {/* Date Separator */}
+            <div className="flex items-center justify-center my-6">
+              <div className="bg-anon-800/80 backdrop-blur-sm px-4 py-1.5 rounded-full">
+                <span className="text-xs text-anon-400 font-medium">{date}</span>
               </div>
-            )}
-
-            {/* Message content */}
-            <div
-              className={`text-sm ${
-                hasDecryptionError(message) 
-                  ? 'text-red-300 italic' 
-                  : isMessageDecrypting(message)
-                  ? 'text-gray-400 italic'
-                  : ''
-              }`}
-            >
-              {getMessageContent(message)}
             </div>
-
-            {/* Timestamp and status */}
-            <div
-              className={`text-xs mt-1 ${
-                message.isOwn ? 'text-blue-200' : 'text-gray-400'
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <span>{formatTimestamp(message.timestamp)}</span>
-                
-                {/* Status indicators */}
-                <div className="flex items-center space-x-1 ml-2">
-                  {message.isOwn && (
-                    <span title="Sent and encrypted">🔒</span>
+            
+            {/* Messages for this date */}
+            {dateMessages.map((message) => (
+              <div
+                key={message.id}
+                className={`flex ${message.isOwn ? "justify-end" : "justify-start"} mb-4`}
+              >
+                <div className={`max-w-[75%] md:max-w-[60%] ${message.isOwn ? "items-end" : "items-start"} space-y-1`}>
+                  {/* Sender info */}
+                  {!message.isOwn && (
+                    <div className="flex items-center space-x-2 px-1">
+                      <div className="w-6 h-6 bg-gradient-to-br from-phantom-400 to-phantom-600 rounded-full flex items-center justify-center">
+                        <span className="text-xs text-white font-bold">
+                          {message.senderFingerprint.slice(0, 1).toUpperCase()}
+                        </span>
+                      </div>
+                      <span className="text-xs text-anon-400 font-mono">
+                        {message.senderFingerprint.slice(0, 8)}...
+                      </span>
+                    </div>
                   )}
-                  {isMessageDecrypting(message) && (
-                    <div className="animate-spin rounded-full h-3 w-3 border-b border-gray-400"></div>
-                  )}
-                  {hasDecryptionError(message) && (
-                    <span title="Decryption error">⚠️</span>
-                  )}
+                  
+                  {/* Message bubble */}
+                  <div
+                    className={`relative px-4 py-3 rounded-2xl ${
+                      message.isOwn
+                        ? "bg-gradient-to-br from-phantom-500 to-phantom-600 text-white"
+                        : "bg-anon-800 text-anon-100 border border-anon-700"
+                    }`}
+                  >
+                    {message.decryptionError ? (
+                      <div className="flex items-center space-x-2 text-red-300">
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                          <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                          <line x1="12" y1="9" x2="12" y2="13"/>
+                          <line x1="12" y1="17" x2="12.01" y2="17"/>
+                        </svg>
+                        <span className="text-sm italic">Unable to decrypt message</span>
+                      </div>
+                    ) : (
+                      <p className="text-sm md:text-base whitespace-pre-wrap break-words">
+                        {message.decryptedContent || "Decrypting..."}
+                      </p>
+                    )}
+                  </div>
+                  
+                  {/* Timestamp and status */}
+                  <div className={`flex items-center space-x-2 px-1 ${
+                    message.isOwn ? "justify-end" : "justify-start"
+                  }`}>
+                    <span className="text-xs text-anon-500">
+                      {formatTime(message.timestamp)}
+                    </span>
+                    {message.isOwn && (
+                      <svg className="w-3 h-3 text-anon-500" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
+            ))}
           </div>
-        </div>
-      ))}
-
-      {/* Scroll anchor */}
-      <div ref={messagesEndRef} />
+        ))}
+        <div ref={messagesEndRef} />
+      </div>
     </div>
   );
 } 

@@ -1,159 +1,89 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { encryptMessage } from "@/lib/signal-protocol";
+import { useState, KeyboardEvent } from "react";
+import { Button } from "./ui/Button";
 
 interface MessageInputProps {
-  roomId: string;
-  recipientFingerprint: string;
-  onSendMessage: (encryptedMessage: { type: number; body: string }) => void;
-  isConnected: boolean;
+  onSendMessage: (message: string) => void;
+  placeholder?: string;
 }
 
 export default function MessageInput({ 
-  roomId, 
-  recipientFingerprint, 
   onSendMessage, 
-  isConnected 
+  placeholder = "Type a message..." 
 }: MessageInputProps) {
   const [message, setMessage] = useState("");
-  const [isEncrypting, setIsEncrypting] = useState(false);
-  const [error, setError] = useState("");
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [isTyping, setIsTyping] = useState(false);
 
-  // Auto-resize textarea
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "inherit";
-      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
-    }
-  }, [message]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!message.trim() || isEncrypting || !isConnected) return;
-
-    setError("");
-    setIsEncrypting(true);
-
-    try {
-      // Encrypt message using Signal Protocol
-      const encryptedMessage = await encryptMessage(
-        recipientFingerprint,
-        1, // device ID
-        message.trim()
-      );
-
-      // Send encrypted message
-      onSendMessage(encryptedMessage);
-      
-      // Clear input
+  const handleSend = () => {
+    if (message.trim()) {
+      onSendMessage(message.trim());
       setMessage("");
-      
-    } catch (error) {
-      setError(`Failed to send message: ${error}`);
-    } finally {
-      setIsEncrypting(false);
+      setIsTyping(false);
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSubmit(e);
+      handleSend();
     }
   };
 
-  const getPlaceholderText = () => {
-    if (!isConnected) return "Connecting...";
-    if (isEncrypting) return "Encrypting message...";
-    return "Type your message... (Enter to send, Shift+Enter for new line)";
-  };
-
-  const getConnectionStatus = () => {
-    if (!isConnected) return "🔴 Disconnected";
-    if (isEncrypting) return "🔒 Encrypting...";
-    return "🟢 Connected • E2EE Active";
+  const handleChange = (value: string) => {
+    setMessage(value);
+    setIsTyping(value.length > 0);
   };
 
   return (
-    <div className="bg-gray-800 border-t border-gray-700 p-4">
-      {/* Connection Status */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="text-xs text-gray-400">
-          {getConnectionStatus()}
-        </div>
-        <div className="text-xs text-gray-500">
-          Room: {roomId.slice(0, 8)}...
-        </div>
-      </div>
-
-      {/* Error Display */}
-      {error && (
-        <div className="bg-red-900/50 border border-red-500 text-red-200 px-3 py-2 rounded mb-3 text-sm">
-          {error}
-        </div>
-      )}
-
-      {/* Message Input Form */}
-      <form onSubmit={handleSubmit} className="space-y-3">
-        <div className="flex space-x-3">
-          <div className="flex-1">
+    <div className="bg-anon-800/90 backdrop-blur-sm border-t border-anon-700 p-4">
+      <div className="max-w-4xl mx-auto">
+        <div className="flex items-end space-x-3">
+          <div className="flex-1 relative">
             <textarea
-              ref={textareaRef}
               value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder={getPlaceholderText()}
-              disabled={!isConnected || isEncrypting}
+              onChange={(e) => handleChange(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={placeholder}
               rows={1}
-              className="w-full bg-gray-700 border border-gray-600 text-gray-100 px-3 py-2 rounded-lg focus:outline-none focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed resize-none"
+              className="w-full bg-anon-900 border border-anon-600 text-anon-100 px-4 py-3 pr-12 rounded-xl resize-none focus:outline-none focus:border-phantom-500 focus:ring-2 focus:ring-phantom-500/20 transition-all duration-200 min-h-[48px] max-h-[120px] overflow-y-auto text-sm md:text-base"
               style={{
-                minHeight: "40px",
-                maxHeight: "120px",
+                height: "auto",
+                minHeight: "48px",
+              }}
+              onInput={(e) => {
+                const target = e.target as HTMLTextAreaElement;
+                target.style.height = "auto";
+                target.style.height = `${Math.min(target.scrollHeight, 120)}px`;
               }}
             />
-          </div>
-          
-          <button
-            type="submit"
-            disabled={!message.trim() || isEncrypting || !isConnected}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center min-w-[80px]"
-          >
-            {isEncrypting ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-            ) : (
-              "Send"
+            
+            {/* Character indicator */}
+            {isTyping && (
+              <div className="absolute bottom-2 right-2 text-xs text-anon-500">
+                {message.length}
+              </div>
             )}
-          </button>
-        </div>
-
-        {/* Message Info */}
-        <div className="flex items-center justify-between text-xs text-gray-400">
-          <div className="flex items-center space-x-2">
-            <span>🔒 End-to-end encrypted</span>
-            <span>•</span>
-            <span>{message.length} characters</span>
           </div>
           
-          {message.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setMessage("")}
-              className="text-gray-500 hover:text-gray-400 transition-colors"
-            >
-              Clear
-            </button>
-          )}
+          <Button
+            variant="phantom"
+            onClick={handleSend}
+            disabled={!message.trim()}
+            className="h-12 w-12 p-0 rounded-lg"
+            icon={
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+              </svg>
+            }
+          />
         </div>
-      </form>
-
-      {/* Security Notice */}
-      <div className="mt-3 text-xs text-gray-500 text-center">
-        <span className="inline-flex items-center">
-          🛡️ Messages are encrypted with Signal Protocol • Zero-knowledge • Forward secrecy
-        </span>
+        
+        {/* Formatting hint */}
+        <div className="mt-2 text-xs text-anon-500">
+          Press <kbd className="px-1.5 py-0.5 bg-anon-700 rounded text-anon-300">Enter</kbd> to send, 
+          <kbd className="px-1.5 py-0.5 bg-anon-700 rounded text-anon-300 ml-1">Shift + Enter</kbd> for new line
+        </div>
       </div>
     </div>
   );

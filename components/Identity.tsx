@@ -3,7 +3,9 @@
 import { useState } from "react";
 import QRCode from "react-qr-code";
 import { IdentityKey } from "@/lib/types";
-import { getOrCreateSessionId } from "@/lib/crypto";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/Card";
+import { Button } from "./ui/Button";
+import { Tooltip } from "./ui/Tooltip";
 
 interface IdentityProps {
   identity: IdentityKey;
@@ -12,138 +14,174 @@ interface IdentityProps {
 
 export default function Identity({ identity, onBurnNotice }: IdentityProps) {
   const [showQR, setShowQR] = useState(false);
-  const [showFingerprint, setShowFingerprint] = useState(false);
-  
-  const sessionId = getOrCreateSessionId();
-  const truncatedFingerprint = `${identity.fingerprint.slice(0, 8)}...${identity.fingerprint.slice(-8)}`;
-  const truncatedSession = `${sessionId.slice(0, 8)}...${sessionId.slice(-8)}`;
+  const [copied, setCopied] = useState(false);
 
-  const copyToClipboard = async (text: string, label: string) => {
+  const copyFingerprint = async () => {
     try {
-      await navigator.clipboard.writeText(text);
-      // You could add a toast notification here
-    } catch (error) {
-      console.error(`Failed to copy ${label}:`, error);
+      await navigator.clipboard.writeText(identity.fingerprint);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Failed to copy
     }
   };
 
-  const handleBurnNotice = () => {
-    if (confirm("⚠️ BURN NOTICE\n\nThis will permanently delete:\n- All stored identities\n- All room data\n- All messages\n- Current session\n\nThis action cannot be undone. Continue?")) {
-      onBurnNotice();
+  const getContactQR = () => {
+    try {
+      // Return the raw data for QR code generation
+      return JSON.stringify({
+        fingerprint: identity.fingerprint,
+        publicKey: btoa(String.fromCharCode(...identity.publicKey)),
+        timestamp: Date.now()
+      });
+    } catch {
+      return "";
     }
   };
 
   return (
-    <div className="bg-gray-800 rounded-lg p-6 max-w-md mx-auto">
-      <div className="text-center mb-6">
-        <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full mx-auto mb-3 flex items-center justify-center">
-          <span className="text-2xl">👤</span>
-        </div>
-        <h2 className="text-lg font-semibold text-gray-100">Anonymous Identity</h2>
-        <p className="text-sm text-gray-400">Zero-knowledge encrypted chat</p>
-      </div>
-
-      <div className="space-y-4">
-        {/* Session ID */}
-        <div className="bg-gray-700 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-medium text-gray-300">Session ID</h3>
-              <p className="text-xs text-gray-400 mt-1">Ephemeral • Resets on refresh</p>
-            </div>
-            <button
-              onClick={() => copyToClipboard(sessionId, "session ID")}
-              className="text-blue-400 hover:text-blue-300 transition-colors"
-              title="Copy session ID"
-            >
-              📋
-            </button>
-          </div>
-          <div className="mt-2 font-mono text-sm text-gray-200 bg-gray-800 px-3 py-2 rounded">
-            {truncatedSession}
-          </div>
-        </div>
-
-        {/* Identity Fingerprint */}
-        <div className="bg-gray-700 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-medium text-gray-300">Identity Key</h3>
-              <p className="text-xs text-gray-400 mt-1">Cryptographic fingerprint</p>
-            </div>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => setShowQR(!showQR)}
-                className="text-green-400 hover:text-green-300 transition-colors"
-                title="Show QR code"
-              >
-                📱
-              </button>
-              <button
-                onClick={() => setShowFingerprint(!showFingerprint)}
-                className="text-blue-400 hover:text-blue-300 transition-colors"
-                title="Toggle full fingerprint"
-              >
-                👁️
-              </button>
-              <button
-                onClick={() => copyToClipboard(identity.fingerprint, "fingerprint")}
-                className="text-blue-400 hover:text-blue-300 transition-colors"
-                title="Copy fingerprint"
-              >
-                📋
-              </button>
-            </div>
-          </div>
-          <div className="mt-2 font-mono text-sm text-gray-200 bg-gray-800 px-3 py-2 rounded">
-            {showFingerprint ? identity.fingerprint : truncatedFingerprint}
-          </div>
-        </div>
-
-        {/* QR Code */}
-        {showQR && (
-          <div className="bg-gray-700 rounded-lg p-4 text-center">
-            <h3 className="text-sm font-medium text-gray-300 mb-3">Identity QR Code</h3>
-                         <div className="bg-white p-4 rounded inline-block">
-               <QRCode
-                 value={identity.fingerprint}
-                 size={160}
-               />
-             </div>
-            <p className="text-xs text-gray-400 mt-2">
-              Scan to share your identity fingerprint
-            </p>
-          </div>
-        )}
-
-        {/* Creation Date */}
-        <div className="bg-gray-700 rounded-lg p-4">
-          <h3 className="text-sm font-medium text-gray-300">Created</h3>
-          <p className="text-sm text-gray-200 mt-1">
-            {new Date(identity.createdAt).toLocaleString()}
+    <Card variant="elevated">
+      <CardHeader>
+        <CardTitle className="text-center bg-gradient-to-r from-secure-400 to-secure-600 bg-clip-text text-transparent">
+          🔐 Your Chat Identity
+        </CardTitle>
+      </CardHeader>
+      
+      <CardContent className="space-y-6">
+        <div className="text-center space-y-2">
+          <p className="text-sm text-anon-400">
+            This is your anonymous identity for secure chats
           </p>
         </div>
-      </div>
 
-      {/* Actions */}
-      <div className="mt-6 space-y-3">
-        <button
-          onClick={handleBurnNotice}
-          className="w-full bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded transition-colors flex items-center justify-center"
-        >
-          🔥 Burn Notice - Delete Everything
-        </button>
-        
-        <div className="text-xs text-gray-400 text-center">
-          Emergency data destruction • Cannot be undone
+        {/* Identity Display */}
+        <div className="space-y-4">
+          {/* Visual Identity */}
+          <div className="flex justify-center">
+            <div className="relative">
+              <div className="w-24 h-24 bg-gradient-to-br from-secure-400 to-secure-600 rounded-2xl flex items-center justify-center shadow-xl">
+                <span className="text-4xl text-white font-bold">
+                  {identity.fingerprint.slice(0, 2).toUpperCase()}
+                </span>
+              </div>
+              <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-secure-500 rounded-full flex items-center justify-center border-4 border-anon-800">
+                <span className="text-xs">🔒</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Fingerprint */}
+          <Card variant="glass">
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-anon-400">Your ID:</span>
+                <Tooltip content={copied ? "Copied!" : "Click to copy"}>
+                  <button
+                    onClick={copyFingerprint}
+                    className="font-mono text-sm text-secure-300 hover:text-secure-200 transition-colors flex items-center space-x-2"
+                  >
+                    <span>{identity.fingerprint.slice(0, 16)}...</span>
+                    {copied ? (
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                    ) : (
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                        <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                      </svg>
+                    )}
+                  </button>
+                </Tooltip>
+              </div>
+              <div className="text-xs text-anon-500">
+                Created: {new Date(identity.createdAt).toLocaleDateString()}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Share Identity */}
+          <Button
+            variant="ghost"
+            onClick={() => setShowQR(!showQR)}
+            className="w-full"
+            icon={
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <rect x="7" y="7" width="3" height="3"/>
+                <rect x="14" y="7" width="3" height="3"/>
+                <rect x="7" y="14" width="3" height="3"/>
+              </svg>
+            }
+          >
+            {showQR ? "Hide" : "Show"} Identity QR Code
+          </Button>
+
+          {showQR && (
+            <Card variant="glass">
+              <CardContent className="p-4 space-y-3">
+                <p className="text-xs text-anon-400 text-center">
+                  Friends can scan this to add you as a contact
+                </p>
+                <div className="bg-white p-4 rounded-lg">
+                  <QRCode
+                    value={getContactQR()}
+                    size={180}
+                    className="mx-auto"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
-      </div>
 
-      {/* Privacy Notice */}
-      <div className="mt-6 text-xs text-gray-500 bg-gray-900 p-3 rounded">
-        <strong>Privacy:</strong> Your identity is anonymous and encrypted. 
-        No personal information is stored or transmitted.
-      </div>
-    </div>
+        {/* Security Info */}
+        <Card variant="bordered" className="border-anon-600/50 bg-anon-800/30">
+          <CardContent className="p-3 space-y-2">
+            <h4 className="text-sm font-medium text-anon-200 flex items-center space-x-2">
+              <span>🛡️</span>
+              <span>Security Features</span>
+            </h4>
+            <ul className="text-xs text-anon-400 space-y-1">
+              <li className="flex items-center space-x-2">
+                <span>✓</span>
+                <span>End-to-end encrypted messages</span>
+              </li>
+              <li className="flex items-center space-x-2">
+                <span>✓</span>
+                <span>No personal information required</span>
+              </li>
+              <li className="flex items-center space-x-2">
+                <span>✓</span>
+                <span>Anonymous identity system</span>
+              </li>
+              <li className="flex items-center space-x-2">
+                <span>✓</span>
+                <span>Perfect forward secrecy</span>
+              </li>
+            </ul>
+          </CardContent>
+        </Card>
+
+        {/* Emergency Delete */}
+        <div className="pt-4 border-t border-anon-700">
+          <Button
+            variant="ghost"
+            onClick={onBurnNotice}
+            className="w-full text-red-400 hover:text-red-300 hover:bg-red-900/20"
+            icon={
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            }
+          >
+            Emergency Delete Everything
+          </Button>
+          <p className="text-xs text-anon-500 text-center mt-2">
+            Instantly delete all messages, chats, and identity
+          </p>
+        </div>
+      </CardContent>
+    </Card>
   );
 } 

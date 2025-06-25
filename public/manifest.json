@@ -1,0 +1,57 @@
+{
+  "name": "AnoChat - Anonymous Encrypted Chat",
+  "short_name": "AnoChat",
+  "description": "Zero-knowledge end-to-end encrypted anonymous chat application",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#d946ef",
+  "orientation": "portrait-primary",
+  "categories": ["social", "communication"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icon-512.png", 
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot-mobile.png",
+      "sizes": "375x667",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Mobile chat interface"
+    },
+    {
+      "src": "/screenshot-desktop.png",
+      "sizes": "1920x1080", 
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Desktop chat interface"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "New Anonymous Room",
+      "short_name": "New Room",
+      "description": "Create a new anonymous chat room",
+      "url": "/?action=new-room",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Join Room",
+      "short_name": "Join",
+      "description": "Join an existing chat room",
+      "url": "/?action=join-room", 
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+} 

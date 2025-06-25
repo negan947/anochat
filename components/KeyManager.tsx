@@ -9,6 +9,10 @@ import {
 } from "@/lib/crypto";
 import storage from "@/lib/storage";
 import { IdentityKey, StoredIdentity } from "@/lib/types";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/Card";
+import { Button } from "./ui/Button";
+import { Input } from "./ui/Input";
+import { LoadingSpinner } from "./ui/LoadingSpinner";
 
 interface KeyManagerProps {
   onIdentityLoaded: (identity: IdentityKey) => void;
@@ -115,7 +119,7 @@ export default function KeyManager({ onIdentityLoaded }: KeyManagerProps) {
     if (!passphrase) return null;
     
     const validation = validatePassphrase(passphrase);
-    const strengthColor = validation.isValid ? "text-green-400" : "text-red-400";
+    const strengthColor = validation.isValid ? "text-secure-400" : "text-red-400";
     
     return (
       <div className={`text-sm ${strengthColor} mt-1`}>
@@ -126,164 +130,218 @@ export default function KeyManager({ onIdentityLoaded }: KeyManagerProps) {
 
   if (!isInitialized) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400"></div>
-        <span className="ml-2 text-gray-300">Initializing cryptography...</span>
-      </div>
+      <Card variant="glass" className="max-w-md mx-auto">
+        <CardContent className="flex items-center justify-center py-8">
+          <div className="text-center space-y-4">
+            <LoadingSpinner size="lg" variant="secure" />
+            <p className="text-anon-300">Initializing cryptography...</p>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <div className="max-w-md mx-auto bg-gray-800 rounded-lg p-6">
-      <h2 className="text-xl font-semibold text-gray-100 mb-6 text-center">
-        AnoChat Identity Manager
-      </h2>
+    <Card variant="elevated" className="max-w-md mx-auto">
+      <CardHeader>
+        <CardTitle className="text-center bg-gradient-to-r from-phantom-400 to-phantom-600 bg-clip-text text-transparent">
+          Identity Manager
+        </CardTitle>
+      </CardHeader>
 
-      {error && (
-        <div className="bg-red-900/50 border border-red-500 text-red-200 px-4 py-3 rounded mb-4">
-          {error}
-        </div>
-      )}
-
-      {currentStep === "list" && (
-        <div className="space-y-4">
-          <div className="text-center text-gray-300 text-sm mb-4">
-            Anonymous chat requires an encrypted identity
+      <CardContent className="space-y-6">
+        {error && (
+          <div className="bg-red-900/50 border border-red-500/50 text-red-200 px-4 py-3 rounded-lg">
+            <div className="flex items-center space-x-2">
+              <svg className="w-4 h-4 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="15" y1="9" x2="9" y2="15"/>
+                <line x1="9" y1="9" x2="15" y2="15"/>
+              </svg>
+              <span className="text-sm">{error}</span>
+            </div>
           </div>
+        )}
 
-          {storedIdentities.length > 0 && (
-            <div>
-              <h3 className="text-sm font-medium text-gray-300 mb-2">Existing Identities</h3>
-              <div className="space-y-2 mb-4">
-                {storedIdentities.map((identity) => (
-                  <div
-                    key={identity.fingerprint}
-                    className="bg-gray-700 p-3 rounded cursor-pointer hover:bg-gray-600 transition-colors"
-                    onClick={() => {
-                      setSelectedIdentity(identity.fingerprint);
-                      setCurrentStep("load");
-                    }}
-                  >
-                    <div className="text-sm font-mono text-gray-200">
-                      {identity.fingerprint.slice(0, 16)}...
-                    </div>
-                    <div className="text-xs text-gray-400">
-                      Created: {new Date(identity.createdAt).toLocaleDateString()}
-                    </div>
-                  </div>
-                ))}
+        {currentStep === "list" && (
+          <div className="space-y-6">
+            <div className="text-center text-anon-400 text-sm">
+              Anonymous chat requires an encrypted identity
+            </div>
+
+            {storedIdentities.length > 0 && (
+              <div className="space-y-4">
+                <h3 className="text-sm font-medium text-anon-300">Existing Identities</h3>
+                <div className="space-y-2">
+                  {storedIdentities.map((identity) => (
+                    <Card
+                      key={identity.fingerprint}
+                      variant="bordered"
+                      className="cursor-pointer hover:border-phantom-500 transition-colors"
+                      onClick={() => {
+                        setSelectedIdentity(identity.fingerprint);
+                        setCurrentStep("load");
+                      }}
+                    >
+                      <CardContent className="p-3">
+                        <div className="text-sm font-mono text-anon-200">
+                          {identity.fingerprint.slice(0, 16)}...
+                        </div>
+                        <div className="text-xs text-anon-500 mt-1">
+                          Created: {new Date(identity.createdAt).toLocaleDateString()}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          <button
-            onClick={() => setCurrentStep("create")}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded transition-colors"
-          >
-            Create New Identity
-          </button>
-        </div>
-      )}
-
-      {currentStep === "create" && (
-        <div className="space-y-4">
-          <div className="text-center text-gray-300 text-sm mb-4">
-            Create a new anonymous identity
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Passphrase
-            </label>
-            <input
-              type="password"
-              value={passphrase}
-              onChange={(e) => setPassphrase(e.target.value)}
-              placeholder="Enter a strong passphrase"
-              className="w-full bg-gray-700 border border-gray-600 text-gray-100 px-3 py-2 rounded focus:outline-none focus:border-blue-500"
-            />
-            {renderPassphraseStrength()}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Confirm Passphrase
-            </label>
-            <input
-              type="password"
-              value={confirmPassphrase}
-              onChange={(e) => setConfirmPassphrase(e.target.value)}
-              placeholder="Confirm your passphrase"
-              className="w-full bg-gray-700 border border-gray-600 text-gray-100 px-3 py-2 rounded focus:outline-none focus:border-blue-500"
-            />
-          </div>
-
-          <div className="text-xs text-gray-400 bg-gray-900 p-3 rounded">
-            <strong>Warning:</strong> Your passphrase encrypts your private key. 
-            If you lose it, your identity cannot be recovered.
-          </div>
-
-          <div className="flex space-x-3">
-            <button
-              onClick={resetForm}
-              className="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded transition-colors"
+            <Button
+              variant="secure"
+              onClick={() => setCurrentStep("create")}
+              className="w-full"
+              icon={
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              }
             >
-              Cancel
-            </button>
-            <button
-              onClick={handleCreateIdentity}
-              disabled={isLoading || !passphrase || !confirmPassphrase}
-              className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white py-2 px-4 rounded transition-colors"
-            >
-              {isLoading ? "Creating..." : "Create Identity"}
-            </button>
+              Create New Identity
+            </Button>
           </div>
-        </div>
-      )}
+        )}
 
-      {currentStep === "load" && (
-        <div className="space-y-4">
-          <div className="text-center text-gray-300 text-sm mb-4">
-            Load existing identity
-          </div>
-
-          <div className="bg-gray-700 p-3 rounded">
-            <div className="text-sm font-mono text-gray-200">
-              {selectedIdentity.slice(0, 16)}...
+        {currentStep === "create" && (
+          <div className="space-y-6">
+            <div className="text-center text-anon-400 text-sm">
+              Create a new anonymous identity
             </div>
-            <div className="text-xs text-gray-400">Selected Identity</div>
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Passphrase
-            </label>
-            <input
+            <div className="space-y-4">
+              <Input
+                type="password"
+                variant="secure"
+                label="Passphrase"
+                value={passphrase}
+                onChange={(e) => setPassphrase(e.target.value)}
+                placeholder="Enter a strong passphrase"
+                icon={
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                    <circle cx="12" cy="16" r="1"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                  </svg>
+                }
+              />
+              {renderPassphraseStrength()}
+
+              <Input
+                type="password"
+                variant="secure"
+                label="Confirm Passphrase"
+                value={confirmPassphrase}
+                onChange={(e) => setConfirmPassphrase(e.target.value)}
+                placeholder="Confirm your passphrase"
+                icon={
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                    <circle cx="12" cy="16" r="1"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                  </svg>
+                }
+              />
+            </div>
+
+            <Card variant="bordered" className="border-amber-700/50 bg-amber-950/30">
+              <CardContent className="p-3">
+                <div className="flex items-start space-x-2">
+                  <svg className="w-4 h-4 text-amber-400 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/>
+                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                  </svg>
+                  <div className="text-xs text-amber-200">
+                    <strong>Warning:</strong> Your passphrase encrypts your private key. 
+                    If you lose it, your identity cannot be recovered.
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="flex space-x-3">
+              <Button
+                variant="ghost"
+                onClick={resetForm}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="secure"
+                onClick={handleCreateIdentity}
+                disabled={isLoading || !passphrase || !confirmPassphrase}
+                loading={isLoading}
+                className="flex-1"
+              >
+                Create Identity
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {currentStep === "load" && (
+          <div className="space-y-6">
+            <div className="text-center text-anon-400 text-sm">
+              Load existing identity
+            </div>
+
+            <Card variant="bordered" className="border-phantom-700/50">
+              <CardContent className="p-3">
+                <div className="text-sm font-mono text-anon-200">
+                  {selectedIdentity.slice(0, 16)}...
+                </div>
+                <div className="text-xs text-anon-500">Selected Identity</div>
+              </CardContent>
+            </Card>
+
+            <Input
               type="password"
+              variant="secure"
+              label="Passphrase"
               value={passphrase}
               onChange={(e) => setPassphrase(e.target.value)}
               placeholder="Enter your passphrase"
-              className="w-full bg-gray-700 border border-gray-600 text-gray-100 px-3 py-2 rounded focus:outline-none focus:border-blue-500"
+              icon={
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                  <circle cx="12" cy="16" r="1"/>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+              }
             />
-          </div>
 
-          <div className="flex space-x-3">
-            <button
-              onClick={resetForm}
-              className="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleLoadIdentity}
-              disabled={isLoading || !passphrase}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white py-2 px-4 rounded transition-colors"
-            >
-              {isLoading ? "Loading..." : "Load Identity"}
-            </button>
+            <div className="flex space-x-3">
+              <Button
+                variant="ghost"
+                onClick={resetForm}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="phantom"
+                onClick={handleLoadIdentity}
+                disabled={isLoading || !passphrase}
+                loading={isLoading}
+                className="flex-1"
+              >
+                Load Identity
+              </Button>
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </CardContent>
+    </Card>
   );
 } 

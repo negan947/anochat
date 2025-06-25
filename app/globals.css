@@ -1,26 +1,210 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: 222.2 84% 4.9%;
+  --foreground: 210 40% 98%;
+  --card: 222.2 84% 4.9%;
+  --card-foreground: 210 40% 98%;
+  --popover: 222.2 84% 4.9%;
+  --popover-foreground: 210 40% 98%;
+  --primary: 262.1 83.3% 57.8%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 217.2 32.6% 17.5%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 217.2 32.6% 17.5%;
+  --muted-foreground: 215 20.2% 65.1%;
+  --accent: 217.2 32.6% 17.5%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 217.2 32.6% 17.5%;
+  --input: 217.2 32.6% 17.5%;
+  --ring: 262.1 83.3% 57.8%;
+  --radius: 0.75rem;
+  
+  /* Anonymous theme specific variables */
+  --anon-bg-primary: #0f172a;
+  --anon-bg-secondary: #1e293b;
+  --anon-bg-tertiary: #334155;
+  --anon-text-primary: #f8fafc;
+  --anon-text-secondary: #cbd5e1;
+  --anon-text-muted: #64748b;
+  --anon-accent: #d946ef;
+  --anon-secure: #10b981;
+  --anon-warning: #f59e0b;
+  
+  /* Smooth scrolling */
+  scroll-behavior: smooth;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Force dark mode always */
+* {
+  border-color: hsl(var(--border));
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--anon-bg-primary);
+  color: var(--anon-text-primary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+  font-feature-settings: 'cv11', 'ss01';
+  font-variation-settings: 'opsz' 32;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--anon-bg-secondary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--anon-bg-tertiary);
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--anon-text-muted);
+}
+
+/* Selection styling */
+::selection {
+  background: rgba(217, 70, 239, 0.3);
+  color: var(--anon-text-primary);
+}
+
+::-moz-selection {
+  background: rgba(217, 70, 239, 0.3);
+  color: var(--anon-text-primary);
+}
+
+/* Focus styles for accessibility */
+:focus-visible {
+  outline: 2px solid var(--anon-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Loading skeleton base */
+.skeleton {
+  background: linear-gradient(90deg, 
+    rgba(55, 65, 81, 0.3) 25%, 
+    rgba(75, 85, 99, 0.6) 50%, 
+    rgba(55, 65, 81, 0.3) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton 1.5s ease-in-out infinite;
+}
+
+/* Glass morphism utility */
+.glass {
+  background: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(203, 213, 225, 0.1);
+}
+
+/* Anonymous button styles */
+.btn-anon {
+  @apply bg-anon-800 hover:bg-anon-700 text-anon-100 border border-anon-600 
+         transition-all duration-200 ease-in-out transform hover:scale-105
+         focus:scale-105 focus:ring-2 focus:ring-phantom-500 focus:ring-opacity-50;
+}
+
+.btn-secure {
+  @apply bg-secure-600 hover:bg-secure-700 text-white border border-secure-500
+         transition-all duration-200 ease-in-out transform hover:scale-105
+         focus:scale-105 focus:ring-2 focus:ring-secure-400 focus:ring-opacity-50
+         shadow-glow-sm hover:shadow-glow-md;
+}
+
+.btn-ghost {
+  @apply bg-transparent hover:bg-anon-800 text-anon-300 hover:text-anon-100
+         border border-anon-600 hover:border-anon-500
+         transition-all duration-200 ease-in-out;
+}
+
+/* Message bubble enhancements */
+.message-own {
+  background: linear-gradient(135deg, #d946ef 0%, #c026d3 100%);
+  box-shadow: 0 4px 12px rgba(217, 70, 239, 0.3);
+}
+
+.message-other {
+  background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
+  border: 1px solid rgba(203, 213, 225, 0.1);
+}
+
+/* Typing indicator */
+.typing-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.typing-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--anon-text-muted);
+  animation: typing 1.4s ease-in-out infinite;
+}
+
+.typing-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+/* Mobile touch enhancements */
+@media (hover: none) and (pointer: coarse) {
+  .btn-anon:hover,
+  .btn-secure:hover,
+  .btn-ghost:hover {
+    transform: none;
+  }
+  
+  .btn-anon:active,
+  .btn-secure:active,
+  .btn-ghost:active {
+    transform: scale(0.98);
+  }
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  .skeleton {
+    animation: none;
+    background: rgba(55, 65, 81, 0.3);
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  :root {
+    --anon-bg-primary: #000000;
+    --anon-bg-secondary: #1a1a1a;
+    --anon-text-primary: #ffffff;
+    --anon-accent: #ff00ff;
+  }
 }

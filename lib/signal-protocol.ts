@@ -394,7 +394,7 @@ export async function decryptMessage(
 
   try {
     const sessionId = `${remoteAddress}.${deviceId}`;
-    const sessionData = await protocolStore.loadSession(sessionId);
+    let sessionData = await protocolStore.loadSession(sessionId);
     
     if (!sessionData) {
       // Attempt to derive a session from the peer-supplied keys (bootstrap).
