@@ -122,11 +122,11 @@ describe("Key Exchange Tests", () => {
     });
 
     test("should generate QR code data URL", async () => {
-      const qrCodeDataURL = await generateKeyExchangeQR(testInvite);
+      const qrCodeData = await generateKeyExchangeQR(testInvite);
 
-      expect(typeof qrCodeDataURL).toBe("string");
-      expect(qrCodeDataURL).toMatch(/^data:image\/png;base64,/);
-      expect(qrCodeDataURL.length).toBeGreaterThan(100);
+      expect(typeof qrCodeData).toBe("string");
+      expect(qrCodeData).toMatch(/^anochat:\/\/keyexchange\//);
+      expect(qrCodeData.length).toBeGreaterThan(100);
     });
 
     test("should parse QR code back to invite", async () => {
@@ -355,7 +355,7 @@ describe("Key Exchange Tests", () => {
       expect(roomInvite.invite.roomId).toBe(roomId);
       expect(roomInvite.invite.senderFingerprint).toBe(identity.fingerprint);
       expect(typeof roomInvite.qrCode).toBe("string");
-      expect(roomInvite.qrCode).toMatch(/^data:image\/png;base64,/);
+      expect(roomInvite.qrCode).toMatch(/^anochat:\/\/keyexchange\//);
       expect(typeof roomInvite.link).toBe("string");
       expect(roomInvite.link).toMatch(/\/join\?k=/);
     });
@@ -460,6 +460,97 @@ describe("Key Exchange Tests", () => {
       invites.forEach(invite => {
         expect(validateKeyExchangeInvite(invite)).toBe(true);
       });
+    });
+  });
+
+  describe('Room Invitation Logic', () => {
+    let testIdentity: IdentityKey;
+
+    beforeEach(async () => {
+      const passphrase = "room-test-passphrase-123";
+      testIdentity = await createIdentity(passphrase);
+    });
+
+    it('should preserve full room ID in serialization/deserialization', async () => {
+      // Generate a full UUID for testing
+      const fullRoomId = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+      const invite = await createKeyExchangeInvite(testIdentity, fullRoomId);
+      
+      // Serialize the invite
+      const serialized = (key_exchange as { serializeKeyExchange: (invite: KeyExchangeInvite) => unknown }).serializeKeyExchange(invite);
+      
+      // The room ID should be stored in full
+      expect((serialized as { r: string }).r).toBe(fullRoomId);
+      
+      // Deserialize and check
+      const deserialized = (key_exchange as { deserializeKeyExchange: (serialized: unknown) => KeyExchangeInvite }).deserializeKeyExchange(serialized);
+      
+      // The room ID should be exactly the same as the original
+      expect(deserialized.roomId).toBe(fullRoomId);
+      expect(deserialized.roomId).not.toContain('xxxx'); // Should not contain placeholders
+    });
+
+    it('should handle room invites with full UUIDs in QR codes', async () => {
+      const roomId = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
+      const invite = await createKeyExchangeInvite(testIdentity, roomId);
+      
+      // Generate QR code
+      const qrData = await generateKeyExchangeQR(invite);
+      
+      // Parse the QR code
+      const parsedInvite = parseKeyExchangeQR(qrData);
+      
+      // Verify the room ID is preserved
+      expect(parsedInvite.roomId).toBe(roomId);
+    });
+
+    it('should handle different UUID formats correctly', async () => {
+      const testCases = [
+        'a1b2c3d4-e5f6-7890-abcd-ef1234567890', // Standard UUID
+        '123e4567-e89b-12d3-a456-426614174000', // Version 1 UUID
+        '550e8400-e29b-41d4-a716-446655440000', // Another format
+      ];
+      
+      for (const roomId of testCases) {
+        const invite = await createKeyExchangeInvite(testIdentity, roomId);
+        const serialized = (key_exchange as { serializeKeyExchange: (invite: KeyExchangeInvite) => unknown }).serializeKeyExchange(invite);
+        const deserialized = (key_exchange as { deserializeKeyExchange: (serialized: unknown) => KeyExchangeInvite }).deserializeKeyExchange(serialized);
+        
+        expect(deserialized.roomId).toBe(roomId);
+      }
+    });
+
+    it('should not create invalid reconstructed room IDs', async () => {
+      const roomId = '12345678-1234-5678-1234-567812345678';
+      const invite = await createKeyExchangeInvite(testIdentity, roomId);
+      
+      // Serialize and deserialize
+      const serialized = (key_exchange as { serializeKeyExchange: (invite: KeyExchangeInvite) => unknown }).serializeKeyExchange(invite);
+      const deserialized = (key_exchange as { deserializeKeyExchange: (serialized: unknown) => KeyExchangeInvite }).deserializeKeyExchange(serialized);
+      
+      // Should not create a pattern like "12345678-xxxx-xxxx-xxxx-12345678"
+      expect(deserialized.roomId).not.toMatch(/xxxx/);
+      expect(deserialized.roomId).toBe(roomId);
+      
+      // Verify it's still a valid UUID format
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      expect(deserialized.roomId).toMatch(uuidRegex);
+    });
+
+    it('should generate room invites that work end-to-end', async () => {
+      const roomId = 'test-room-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+      
+      // User A creates a room invite
+      const inviteResult = await generateRoomInvite(testIdentity, roomId);
+      
+      // User B parses the QR code
+      const parsedInvite = parseKeyExchangeQR(inviteResult.qrCode);
+      
+      // Verify all data is intact
+      expect(parsedInvite.roomId).toBe(roomId);
+      expect(parsedInvite.senderFingerprint).toBe(testIdentity.fingerprint);
+      expect(parsedInvite.preKeyBundle).toBeDefined();
+      expect(parsedInvite.preKeyBundle.identityKey).toBeDefined();
     });
   });
 }); 

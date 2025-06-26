@@ -138,7 +138,7 @@ function serializeKeyExchange(invite: KeyExchangeInvite): SerializedKeyExchange 
 
   // Only include room ID if specified
   if (invite.roomId) {
-    serialized.r = invite.roomId.replace(/-/g, '').slice(0, 8); // Shortened room ID
+    serialized.r = invite.roomId;
   }
 
   return serialized;
@@ -170,9 +170,8 @@ function deserializeKeyExchange(serialized: SerializedKeyExchange): KeyExchangeI
       `${serialized.i.slice(0,8)}-${serialized.i.slice(8,12)}-${serialized.i.slice(12,16)}-${serialized.i.slice(16,20)}-${serialized.i.slice(20)}` :
       serialized.i;
 
-    const fullRoomId = serialized.r && serialized.r.length === 8 ?
-      `${serialized.r.slice(0,8)}-xxxx-xxxx-xxxx-${serialized.r.slice(0,8)}` :
-      serialized.r;
+    // Use the room ID directly without any reconstruction
+    const fullRoomId = serialized.r;
 
     return {
       version: serialized.v === "1" ? KEY_EXCHANGE_VERSION : serialized.v,

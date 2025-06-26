@@ -73,10 +73,10 @@ export async function encryptPrivateKey(
   // Generate random salt for key derivation
   const salt = sodium.randombytes_buf(CRYPTO.SALT_BYTES);
 
-  // Derive encryption key from passphrase using generichash
-  // This is simpler but still secure for our use case
-  const passphraseData = sodium.from_string(passphrase);
-  const key = sodium.crypto_generichash(CRYPTO.KEY_BYTES, passphraseData, salt);
+  // Derive encryption key from passphrase
+  // TODO: Should use crypto_pwhash (Argon2) for better security against brute-force attacks
+  const passphraseBytes = sodium.from_string(passphrase);
+  const key = sodium.crypto_generichash(CRYPTO.KEY_BYTES, passphraseBytes, salt);
 
   // Generate random nonce for encryption
   const nonce = sodium.randombytes_buf(CRYPTO.NONCE_BYTES);
@@ -107,8 +107,9 @@ export async function decryptPrivateKey(
 
   try {
     // Derive the same encryption key from passphrase
-    const passphraseData = sodium.from_string(passphrase);
-    const key = sodium.crypto_generichash(CRYPTO.KEY_BYTES, passphraseData, encryptedKey.salt);
+    // TODO: Should use crypto_pwhash (Argon2) for better security against brute-force attacks
+    const passphraseBytes = sodium.from_string(passphrase);
+    const key = sodium.crypto_generichash(CRYPTO.KEY_BYTES, passphraseBytes, encryptedKey.salt);
 
     // Decrypt the private key
     const privateKey = sodium.crypto_secretbox_open_easy(

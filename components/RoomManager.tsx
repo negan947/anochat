@@ -125,14 +125,27 @@ export default function RoomManager({ identity, onRoomJoined }: RoomManagerProps
       );
 
       if (invite.roomId) {
-        await storage.saveRoom(
-          invite.roomId,
-          "Private Chat",
-          [identity.fingerprint, invite.senderFingerprint]
-        );
+        // Check if we already have this room
+        const existingRoom = await storage.getRoom(invite.roomId);
+        
+        if (!existingRoom) {
+          // Only save the room if we don't already have it
+          await storage.saveRoom(
+            invite.roomId,
+            "Private Chat",
+            [identity.fingerprint, invite.senderFingerprint]
+          );
+        } else {
+          // If room exists, just add ourselves as a participant if we're not already there
+          await storage.addRoomParticipant(invite.roomId, identity.fingerprint);
+          // Also ensure the sender is in the participants list
+          await storage.addRoomParticipant(invite.roomId, invite.senderFingerprint);
+        }
         
         await loadActiveRooms();
-        onRoomJoined(invite.roomId, "Private Chat");
+        
+        // Navigate to the room whether it's new or existing
+        onRoomJoined(invite.roomId, existingRoom?.name || "Private Chat");
       }
 
       setCurrentStep("list");
