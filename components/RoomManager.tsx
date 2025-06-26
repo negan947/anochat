@@ -33,7 +33,8 @@ export default function RoomManager({ identity, onRoomJoined }: RoomManagerProps
   const [currentStep, setCurrentStep] = useState<RoomManagerStep>("list");
   const [roomName, setRoomName] = useState("");
   const [inviteCode, setInviteCode] = useState("");
-  const [generatedInvite, setGeneratedInvite] = useState<string>("");
+  const [generatedInviteQrData, setGeneratedInviteQrData] = useState<string>("");
+  const [generatedInviteLink, setGeneratedInviteLink] = useState<string>("");
   const [createdRoomId, setCreatedRoomId] = useState<string>("");
   const [createdRoomName, setCreatedRoomName] = useState<string>("");
   const [showQR, setShowQR] = useState(false);
@@ -84,7 +85,8 @@ export default function RoomManager({ identity, onRoomJoined }: RoomManagerProps
       );
 
       const invite = await generateRoomInvite(identity, roomId);
-      setGeneratedInvite(invite.qrCode);
+      setGeneratedInviteQrData(invite.qrCode);
+      setGeneratedInviteLink(invite.link);
       setCreatedRoomId(roomId);
       setCreatedRoomName(finalRoomName);
       
@@ -105,10 +107,11 @@ export default function RoomManager({ identity, onRoomJoined }: RoomManagerProps
     try {
       let invite: KeyExchangeInvite;
       
-      if (inviteCode.startsWith("anochat://")) {
-        invite = await parseKeyExchangeLink(inviteCode);
+      // Smartly parse invite code
+      if (inviteCode.startsWith("http")) {
+        invite = parseKeyExchangeLink(inviteCode);
       } else {
-        invite = await parseKeyExchangeQR(inviteCode);
+        invite = parseKeyExchangeQR(inviteCode);
       }
 
       if (!invite.preKeyBundle || !invite.senderFingerprint) {
@@ -149,7 +152,8 @@ export default function RoomManager({ identity, onRoomJoined }: RoomManagerProps
   const resetForm = () => {
     setRoomName("");
     setInviteCode("");
-    setGeneratedInvite("");
+    setGeneratedInviteQrData("");
+    setGeneratedInviteLink("");
     setCreatedRoomId("");
     setCreatedRoomName("");
     setShowQR(false);
@@ -160,7 +164,7 @@ export default function RoomManager({ identity, onRoomJoined }: RoomManagerProps
 
   const copyInviteToClipboard = async () => {
     try {
-      await navigator.clipboard.writeText(generatedInvite);
+      await navigator.clipboard.writeText(generatedInviteLink);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -335,7 +339,7 @@ export default function RoomManager({ identity, onRoomJoined }: RoomManagerProps
               {showQR && (
                 <div className="bg-white p-4 rounded-lg text-center">
                   <QRCode
-                    value={generatedInvite}
+                    value={generatedInviteQrData}
                     size={180}
                     className="mx-auto"
                   />

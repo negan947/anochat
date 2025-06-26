@@ -25,31 +25,36 @@ export default function AnoChat() {
   const [currentRoomName, setCurrentRoomName] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
-    // Check if we have any stored identities on startup
+    // This effect runs only on the client, after the initial render.
+    // We can now safely use browser-specific APIs.
+    setIsClient(true);
+    
+    const checkForExistingIdentities = async () => {
+      setIsLoading(true);
+      try {
+        // Simulate loading time for better UX
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        const identities = await storage.getAllIdentities();
+        if (identities.length > 0) {
+          setAppState("advanced"); // Show identity manager to load existing
+        } else {
+          setAppState("welcome"); // Show welcome screen for new users
+        }
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        setError(`Failed to check identities: ${errorMessage}`);
+        setAppState("welcome");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     checkForExistingIdentities();
   }, []);
-
-  const checkForExistingIdentities = async () => {
-    setIsLoading(true);
-    try {
-      // Simulate loading time for better UX
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      const identities = await storage.getAllIdentities();
-      if (identities.length > 0) {
-        setAppState("advanced"); // Show identity manager to load existing
-      } else {
-        setAppState("welcome"); // Show welcome screen for new users
-      }
-    } catch (error) {
-      setError(`Failed to check identities: ${error}`);
-      setAppState("welcome");
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleWelcomeGetStarted = () => {
     setAppState("quickstart");
@@ -86,7 +91,6 @@ export default function AnoChat() {
   };
 
   const handleBurnComplete = () => {
-    // Reset everything
     setCurrentIdentity(null);
     setCurrentRoomId("");
     setCurrentRoomName("");
@@ -95,12 +99,11 @@ export default function AnoChat() {
   };
 
   const handleShowIdentity = () => {
-    // Toggle between dashboard and identity view for advanced users
     setAppState(appState === "advanced" ? "dashboard" : "advanced");
   };
 
-  // Loading state with enhanced skeleton
-  if (appState === "loading" || isLoading) {
+  // Loading state: always show this on server and first client render
+  if (!isClient || appState === "loading" || isLoading) {
     return (
       <div className="min-h-screen bg-anon-900 text-anon-100 flex items-center justify-center">
         <Card className="max-w-md w-full mx-4" variant="glass">
