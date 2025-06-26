@@ -15,6 +15,7 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { IdentityKey } from "@/lib/types";
 import storage from "@/lib/storage";
+import { identityStore } from "@/lib/identity-store";
 
 type AppState = "loading" | "welcome" | "quickstart" | "advanced" | "dashboard" | "chat" | "burn";
 
@@ -70,6 +71,7 @@ export default function AnoChat() {
 
   const handleIdentityLoaded = (identity: IdentityKey) => {
     setCurrentIdentity(identity);
+    identityStore.setActiveIdentity(identity);
     setAppState("dashboard");
     setError("");
   };
@@ -92,6 +94,7 @@ export default function AnoChat() {
 
   const handleBurnComplete = () => {
     setCurrentIdentity(null);
+    identityStore.setActiveIdentity(null);
     setCurrentRoomId("");
     setCurrentRoomName("");
     setError("");

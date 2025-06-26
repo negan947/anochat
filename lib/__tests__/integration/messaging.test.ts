@@ -6,8 +6,6 @@
 import { 
   initCrypto, 
   createIdentity,
-  generateFingerprint,
-  generateIdentityKey,
 } from '../../crypto';
 import { 
   initSignalProtocol, 

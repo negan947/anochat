@@ -18,6 +18,7 @@ import {
   clearMemory
 } from "./crypto";
 import _sodium from "libsodium-wrappers";
+import { identityStore } from "./identity-store";
 
 // Initialize sodium for crypto operations
 let sodium: typeof _sodium;
@@ -30,20 +31,17 @@ class SimpleSignalProtocolStore {
   constructor() {}
 
   async getIdentityKeyPair(): Promise<{ publicKey: Uint8Array; privateKey: Uint8Array }> {
-    // Get current identity from storage
-    const identities = await storage.getAllIdentities();
-    if (identities.length === 0) {
-      throw new CryptoError("No identity key found. Create an identity first.");
+    // Get the currently active identity from our in-memory store
+    const identity = identityStore.getActiveIdentity();
+    
+    if (!identity) {
+      throw new CryptoError("No active identity found. Load an identity first.");
     }
     
-    // Use the most recently used identity
-    const identity = identities.sort((a, b) => b.lastUsed.getTime() - a.lastUsed.getTime())[0];
-    
-    // For this simplified version, we'll use the public key directly
-    // In a full implementation, you'd need to convert between key formats
+    // Return the real public and private keys
     return {
       publicKey: identity.publicKey,
-      privateKey: new Uint8Array(32) // Placeholder - would need actual private key
+      privateKey: identity.privateKey
     };
   }
 
@@ -348,6 +346,11 @@ export async function encryptMessage(
     throw new CryptoError("Signal Protocol not initialized. Call initSignalProtocol() first.");
   }
 
+  // TODO: SECURITY WARNING
+  // This implementation is a simplified X3DH handshake. It does NOT implement
+  // the Double Ratchet algorithm. It lacks forward secrecy and post-compromise
+  // security. This should be replaced with a full implementation from the
+  // official libsignal-protocol-javascript library for production use.
   try {
     const sessionId = `${remoteAddress}.${deviceId}`;
     const sessionData = await protocolStore.loadSession(sessionId);
@@ -392,6 +395,11 @@ export async function decryptMessage(
     throw new CryptoError("Signal Protocol not initialized. Call initSignalProtocol() first.");
   }
 
+  // TODO: SECURITY WARNING
+  // This implementation is a simplified X3DH handshake. It does NOT implement
+  // the Double Ratchet algorithm. It lacks forward secrecy and post-compromise
+  // security. This should be replaced with a full implementation from the
+  // official libsignal-protocol-javascript library for production use.
   try {
     const sessionId = `${remoteAddress}.${deviceId}`;
     let sessionData = await protocolStore.loadSession(sessionId);

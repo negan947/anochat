@@ -252,7 +252,7 @@ describe("Key Exchange Tests", () => {
       const missingFingerprintInvite = { ...validInvite, senderFingerprint: "" };
       expect(validateKeyExchangeInvite(missingFingerprintInvite)).toBe(false);
 
-      const missingBundleInvite = { ...validInvite, preKeyBundle: null as any };
+      const missingBundleInvite = { ...validInvite, preKeyBundle: null as unknown as PreKeyBundle };
       expect(validateKeyExchangeInvite(missingBundleInvite)).toBe(false);
     });
 
