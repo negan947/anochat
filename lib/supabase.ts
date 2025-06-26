@@ -1,20 +1,29 @@
-import { createClient, SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
+import { createClient, SupabaseClient, RealtimeChannel, Session } from '@supabase/supabase-js';
 import { EncryptedMessage } from './types';
 
-// Initialize Supabase client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+let supabase: SupabaseClient | null = null;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables');
+function getSupabaseClient(): SupabaseClient {
+  if (supabase) {
+    return supabase;
+  }
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('Missing Supabase environment variables');
+  }
+
+  supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  });
+  
+  return supabase;
 }
-
-export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: false, // Don't persist sessions for anonymity
-    autoRefreshToken: false, // No token refresh for ephemeral sessions
-  },
-});
 
 // Track active subscriptions
 const activeChannels: Map<string, RealtimeChannel> = new Map();
@@ -25,7 +34,8 @@ const activeChannels: Map<string, RealtimeChannel> = new Map();
  */
 export async function signInAnonymously() {
   try {
-    const { data, error } = await supabase.auth.signInAnonymously();
+    const client = getSupabaseClient();
+    const { data, error } = await client.auth.signInAnonymously();
     if (error) throw error;
     return data;
   } catch (error) {
@@ -45,7 +55,8 @@ export async function signOut() {
     }
     activeChannels.clear();
 
-    const { error } = await supabase.auth.signOut();
+    const client = getSupabaseClient();
+    const { error } = await client.auth.signOut();
     if (error) throw error;
   } catch (error) {
     console.error('Sign out failed:', error);
@@ -58,7 +69,8 @@ export async function signOut() {
  */
 export async function getSession() {
   try {
-    const { data: { session }, error } = await supabase.auth.getSession();
+    const client = getSupabaseClient();
+    const { data: { session }, error } = await client.auth.getSession();
     if (error) throw error;
     return session;
   } catch (error) {
@@ -77,7 +89,8 @@ export async function insertMessage(
   header: Uint8Array
 ): Promise<EncryptedMessage | null> {
   try {
-    const { data, error } = await supabase
+    const client = getSupabaseClient();
+    const { data, error } = await client
       .from('messages')
       .insert([
         {
@@ -112,7 +125,8 @@ export async function fetchMessages(
   limit: number = 50
 ): Promise<EncryptedMessage[]> {
   try {
-    const { data, error } = await supabase
+    const client = getSupabaseClient();
+    const { data, error } = await client
       .from('messages')
       .select('*')
       .eq('room_id', roomId)
@@ -140,13 +154,14 @@ export function subscribeToRoom(
   roomId: string,
   onMessage: (message: EncryptedMessage) => void
 ): () => void {
+  const client = getSupabaseClient();
   // Unsubscribe from existing channel if any
   const existingChannel = activeChannels.get(roomId);
   if (existingChannel) {
     existingChannel.unsubscribe();
   }
 
-  const channel = supabase
+  const channel = client
     .channel(`room:${roomId}`)
     .on(
       'postgres_changes',
@@ -189,7 +204,8 @@ export function subscribeToTyping(
   setTyping: (isTyping: boolean) => void;
   unsubscribe: () => void;
 } {
-  const channel = supabase.channel(`typing:${roomId}`);
+  const client = getSupabaseClient();
+  const channel = client.channel(`typing:${roomId}`);
   
   // Track typing status
   channel
@@ -227,13 +243,14 @@ export function subscribeToTyping(
  * Check if Supabase is properly configured
  */
 export function isSupabaseConfigured(): boolean {
-  return !!(supabaseUrl && supabaseAnonKey);
+  return !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 }
 
 /**
  * Get connection status
  */
 export function getConnectionStatus(): 'connected' | 'disconnected' | 'connecting' {
+  if (!supabase) return 'disconnected';
   const channels = supabase.getChannels();
   if (channels.length === 0) return 'disconnected';
   
@@ -245,7 +262,8 @@ export function getConnectionStatus(): 'connected' | 'disconnected' | 'connectin
 
 export async function authenticateAnonymously(): Promise<void> {
   try {
-    const { error } = await supabase.auth.signInAnonymously();
+    const client = getSupabaseClient();
+    const { error } = await client.auth.signInAnonymously();
     if (error) {
       throw new Error(`Authentication failed: ${error.message}`);
     }
@@ -259,7 +277,8 @@ export async function subscribeToMessages(
   roomId: string,
   onMessage: (message: unknown) => void
 ): Promise<() => void> {
-  const subscription = supabase
+  const client = getSupabaseClient();
+  const subscription = client
     .channel(`room:${roomId}`)
     .on(
       "postgres_changes",
@@ -286,7 +305,8 @@ export async function sendEncryptedMessage(
   ciphertext: Uint8Array,
   header: Uint8Array
 ): Promise<void> {
-  const { error } = await supabase.from("messages").insert({
+  const client = getSupabaseClient();
+  const { error } = await client.from("messages").insert({
     room_id: roomId,
     sender_fingerprint: senderFingerprint,
     ciphertext: ciphertext,
@@ -296,4 +316,18 @@ export async function sendEncryptedMessage(
   if (error) {
     throw new Error(`Failed to send message: ${error.message}`);
   }
+}
+
+/**
+ * A wrapper for onAuthStateChange to support lazy initialization.
+ */
+export function onAuthChange(
+  callback: (event: string, session: Session | null) => void
+) {
+  const client = getSupabaseClient();
+  const {
+    data: { subscription },
+  } = client.auth.onAuthStateChange(callback);
+
+  return subscription;
 } 
