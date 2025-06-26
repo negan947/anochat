@@ -19,7 +19,7 @@ import {
 } from "../key-exchange";
 import { createIdentity } from "../crypto";
 import { initSignalProtocol } from "../signal-protocol";
-import { PreKeyBundle } from "../types";
+import { PreKeyBundle, IdentityKey } from "../types";
 
 // Mock IndexedDB
 import 'fake-indexeddb/auto';
@@ -252,7 +252,7 @@ describe("Key Exchange Tests", () => {
       const missingFingerprintInvite = { ...validInvite, senderFingerprint: "" };
       expect(validateKeyExchangeInvite(missingFingerprintInvite)).toBe(false);
 
-              const missingBundleInvite = { ...validInvite, preKeyBundle: null as unknown };
+      const missingBundleInvite = { ...validInvite, preKeyBundle: null as any };
       expect(validateKeyExchangeInvite(missingBundleInvite)).toBe(false);
     });
 
@@ -345,9 +345,8 @@ describe("Key Exchange Tests", () => {
       const passphrase = "host-passphrase-123";
       const identity = await createIdentity(passphrase);
       const roomId = "room-abc123";
-      const roomName = "Secret Meeting";
 
-      const roomInvite = await generateRoomInvite(identity, roomId, roomName);
+      const roomInvite = await generateRoomInvite(identity, roomId);
 
       expect(roomInvite).toHaveProperty("invite");
       expect(roomInvite).toHaveProperty("qrCode");

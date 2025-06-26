@@ -3,11 +3,25 @@
  * Tests the full flow of sending and receiving encrypted messages
  */
 
-import { initCrypto, generateIdentityKey, generateFingerprint } from '../../crypto';
-import { initSignalProtocol, generatePreKeyBundle, processPreKeyBundle } from '../../signal-protocol';
-import { sendMessage, processIncomingMessage, loadRoomHistory } from '../../message-handler';
+import { 
+  initCrypto, 
+  createIdentity,
+  generateFingerprint,
+  generateIdentityKey,
+} from '../../crypto';
+import { 
+  initSignalProtocol, 
+  generatePreKeyBundle, 
+  processPreKeyBundle 
+} from '../../signal-protocol';
+import { 
+  sendMessage, 
+  processIncomingMessage, 
+  loadRoomHistory 
+} from '../../message-handler';
 import { signInAnonymously, insertMessage, fetchMessages } from '../../supabase';
 import { v4 as uuidv4 } from 'uuid';
+import { IdentityKey } from '../../types';
 
 // Mock Supabase client
 jest.mock('../../supabase', () => ({
@@ -19,20 +33,17 @@ jest.mock('../../supabase', () => ({
 }));
 
 describe('Messaging Integration', () => {
-  let alice: { publicKey: Uint8Array; privateKey: Uint8Array; fingerprint: string };
-  let bob: { publicKey: Uint8Array; privateKey: Uint8Array; fingerprint: string };
+  let alice: IdentityKey;
+  let bob: IdentityKey;
   const roomId = uuidv4();
 
   beforeAll(async () => {
     // Initialize crypto
     await initCrypto();
 
-    // Generate identities
-    alice = await generateIdentityKey();
-    alice.fingerprint = await generateFingerprint(alice.publicKey);
-
-    bob = await generateIdentityKey();
-    bob.fingerprint = await generateFingerprint(bob.publicKey);
+    // Generate identities using the proper createIdentity function
+    alice = await createIdentity("alice-passphrase");
+    bob = await createIdentity("bob-passphrase");
 
     // Initialize Signal protocol
     await initSignalProtocol();
