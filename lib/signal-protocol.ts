@@ -17,7 +17,7 @@ import {
   base64ToUint8Array,
   clearMemory
 } from "./crypto";
-import _sodium from "libsodium-wrappers";
+import _sodium from "libsodium-wrappers-sumo";
 import { identityStore } from "./identity-store";
 
 // Initialize sodium for crypto operations

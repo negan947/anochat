@@ -3,7 +3,7 @@
  * Uses libsodium for all crypto operations
  */
 
-import _sodium from "libsodium-wrappers";
+import _sodium from "libsodium-wrappers-sumo";
 import { v4 as uuidv4 } from "uuid";
 import {
   KeyPair,
@@ -70,32 +70,43 @@ export async function encryptPrivateKey(
     throw new CryptoError("Sodium not initialized. Call initCrypto() first.");
   }
 
-  // Generate random salt for key derivation
-  const salt = sodium.randombytes_buf(CRYPTO.SALT_BYTES);
+  // Generate random salt for Argon2 key derivation
+  // Use the actual libsodium constant for salt bytes (16 bytes for Argon2)
+  const salt = sodium.randombytes_buf(sodium.crypto_pwhash_SALTBYTES);
 
-  // Derive encryption key from passphrase
-  // TODO: Should use crypto_pwhash (Argon2) for better security against brute-force attacks
-  const passphraseBytes = sodium.from_string(passphrase);
-  const key = sodium.crypto_generichash(CRYPTO.KEY_BYTES, passphraseBytes, salt);
+  try {
+    // Use sodium.crypto_pwhash for secure key derivation with Argon2id
+    // This is MUCH more secure than the previous crypto_generichash approach
+    const key = sodium.crypto_pwhash(
+      CRYPTO.KEY_BYTES,                      // output length (32 bytes)
+      passphrase,                            // password as string
+      salt,                                  // salt (correct number of bytes)
+      sodium.crypto_pwhash_OPSLIMIT_INTERACTIVE, // ops limit (secure default)
+      sodium.crypto_pwhash_MEMLIMIT_INTERACTIVE, // mem limit (64MB)
+      sodium.crypto_pwhash_ALG_ARGON2ID13    // algorithm (Argon2id)
+    );
 
-  // Generate random nonce for encryption
-  const nonce = sodium.randombytes_buf(CRYPTO.NONCE_BYTES);
+    // Generate random nonce for encryption
+    const nonce = sodium.randombytes_buf(CRYPTO.NONCE_BYTES);
 
-  // Encrypt the private key
-  const ciphertext = sodium.crypto_secretbox_easy(privateKey, nonce, key);
+    // Encrypt the private key
+    const ciphertext = sodium.crypto_secretbox_easy(privateKey, nonce, key);
 
-  // Clear the derived key from memory
-  sodium.memzero(key);
+    // Clear sensitive data from memory
+    sodium.memzero(key);
 
-  return {
-    salt,
-    nonce,
-    ciphertext,
-  };
+    return {
+      salt,
+      nonce,
+      ciphertext,
+    };
+  } catch (error) {
+    throw new CryptoError(`Password hashing failed: ${error}`);
+  }
 }
 
 /**
- * Decrypt private key with passphrase
+ * Decrypt private key with passphrase using Argon2id
  */
 export async function decryptPrivateKey(
   encryptedKey: EncryptedPrivateKey,
@@ -106,10 +117,16 @@ export async function decryptPrivateKey(
   }
 
   try {
-    // Derive the same encryption key from passphrase
-    // TODO: Should use crypto_pwhash (Argon2) for better security against brute-force attacks
-    const passphraseBytes = sodium.from_string(passphrase);
-    const key = sodium.crypto_generichash(CRYPTO.KEY_BYTES, passphraseBytes, encryptedKey.salt);
+    // Use the new secure crypto_pwhash (Argon2id) method
+    // Since we've upgraded to the secure method, we'll use it for all decryption
+    const key = sodium.crypto_pwhash(
+      CRYPTO.KEY_BYTES,                      // output length (32 bytes)
+      passphrase,                            // password as string
+      encryptedKey.salt,                     // salt (16 bytes)
+      sodium.crypto_pwhash_OPSLIMIT_INTERACTIVE, // ops limit
+      sodium.crypto_pwhash_MEMLIMIT_INTERACTIVE, // mem limit (64MB)
+      sodium.crypto_pwhash_ALG_ARGON2ID13    // algorithm (Argon2id)
+    );
 
     // Decrypt the private key
     const privateKey = sodium.crypto_secretbox_open_easy(
@@ -118,11 +135,18 @@ export async function decryptPrivateKey(
       key
     );
 
-    // Clear the derived key from memory
+    // Clear sensitive data from memory
     sodium.memzero(key);
 
     return privateKey;
-  } catch {
+  } catch (error: any) {
+    // Handle specific sodium errors
+    if (error?.message?.includes('incorrect key')) {
+      throw new CryptoError(ERRORS.INVALID_PASSPHRASE);
+    }
+    if (error instanceof CryptoError) {
+      throw error;
+    }
     throw new CryptoError(ERRORS.INVALID_PASSPHRASE);
   }
 }

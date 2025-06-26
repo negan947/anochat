@@ -351,7 +351,7 @@ export const storage = {
   async wipeCryptoKeys(): Promise<void> {
     // Create dummy crypto operations to overwrite key memory
     try {
-      const sodium = await import('libsodium-wrappers');
+      const sodium = await import('libsodium-wrappers-sumo');
       await sodium.ready;
 
       // Generate multiple dummy keys to overwrite memory

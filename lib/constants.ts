@@ -12,6 +12,14 @@ export const CRYPTO = {
   FINGERPRINT_BYTES: 32,
   PUBLIC_KEY_BYTES: 32,
   PRIVATE_KEY_BYTES: 32,
+  
+  // Argon2 password hashing parameters (for crypto_pwhash)
+  // Using INTERACTIVE parameters for good balance of security and performance
+  // INTERACTIVE: ~64MB RAM, ~1 second on typical CPU
+  PWHASH_SALTBYTES: 16,  // crypto_pwhash_SALTBYTES
+  PWHASH_OPSLIMIT: 2,    // crypto_pwhash_OPSLIMIT_INTERACTIVE 
+  PWHASH_MEMLIMIT: 67108864, // crypto_pwhash_MEMLIMIT_INTERACTIVE (64MB)
+  PWHASH_ALG: 2,         // crypto_pwhash_ALG_ARGON2ID13 (most secure)
 } as const;
 
 // Storage constants
