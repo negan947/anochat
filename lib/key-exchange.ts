@@ -43,7 +43,7 @@ export interface KeyExchangeResponse {
 /**
  * Serialized key exchange data for QR codes
  */
-interface SerializedKeyExchange {
+export interface SerializedKeyExchange {
   v: string; // version
   i: string; // inviteId
   f: string; // fingerprint
@@ -113,7 +113,7 @@ export async function createKeyExchangeResponse(
  * Serialize key exchange data for QR code (compact format)
  * Uses a more compact representation for QR code size limits
  */
-function serializeKeyExchange(invite: KeyExchangeInvite): SerializedKeyExchange {
+export function serializeKeyExchange(invite: KeyExchangeInvite): SerializedKeyExchange {
   // For QR codes, we'll only include essential data to stay within size limits
   const serialized: SerializedKeyExchange = {
     v: "1", // Shortened version
@@ -147,7 +147,7 @@ function serializeKeyExchange(invite: KeyExchangeInvite): SerializedKeyExchange 
 /**
  * Deserialize key exchange data from QR code
  */
-function deserializeKeyExchange(serialized: SerializedKeyExchange): KeyExchangeInvite {
+export function deserializeKeyExchange(serialized: SerializedKeyExchange): KeyExchangeInvite {
   try {
     const preKeyBundle: PreKeyBundle = {
       identityKey: base64ToUint8Array(serialized.ik),

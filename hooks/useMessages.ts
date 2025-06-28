@@ -9,6 +9,7 @@ import {
   retryFailedMessages,
 } from '../lib/message-handler';
 import { subscribeToTyping } from '../lib/supabase';
+import storage from '../lib/storage';
 
 interface UseMessagesOptions {
   roomId: string;
@@ -55,8 +56,15 @@ export function useMessages({
   useEffect(() => {
     if (!roomId) return;
 
-    unsubscribeRef.current = subscribeToRoomMessages(roomId, (message) => {
+    unsubscribeRef.current = subscribeToRoomMessages(roomId, async (message) => {
       setMessages(prev => [...prev, message]);
+      
+      // Update room's last message timestamp when receiving a new message
+      try {
+        await storage.updateRoomLastMessage(roomId);
+      } catch (error) {
+        console.error('Failed to update room last message timestamp:', error);
+      }
     });
 
     return () => {

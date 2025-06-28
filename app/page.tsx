@@ -36,9 +36,6 @@ export default function AnoChat() {
     const checkForExistingIdentities = async () => {
       setIsLoading(true);
       try {
-        // Simulate loading time for better UX
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
         const identities = await storage.getAllIdentities();
         if (identities.length > 0) {
           setAppState("advanced"); // Show identity manager to load existing

@@ -15,6 +15,8 @@ import {
   formatFingerprint,
   verifyFingerprints,
   generateRoomInvite,
+  serializeKeyExchange,
+  deserializeKeyExchange,
   KeyExchangeInvite,
 } from "../key-exchange";
 import { createIdentity } from "../crypto";
@@ -477,13 +479,13 @@ describe("Key Exchange Tests", () => {
       const invite = await createKeyExchangeInvite(testIdentity, fullRoomId);
       
       // Serialize the invite
-      const serialized = (key_exchange as { serializeKeyExchange: (invite: KeyExchangeInvite) => unknown }).serializeKeyExchange(invite);
+      const serialized = serializeKeyExchange(invite);
       
       // The room ID should be stored in full
-      expect((serialized as { r: string }).r).toBe(fullRoomId);
+      expect(serialized.r).toBe(fullRoomId);
       
       // Deserialize and check
-      const deserialized = (key_exchange as { deserializeKeyExchange: (serialized: unknown) => KeyExchangeInvite }).deserializeKeyExchange(serialized);
+      const deserialized = deserializeKeyExchange(serialized);
       
       // The room ID should be exactly the same as the original
       expect(deserialized.roomId).toBe(fullRoomId);
@@ -513,8 +515,8 @@ describe("Key Exchange Tests", () => {
       
       for (const roomId of testCases) {
         const invite = await createKeyExchangeInvite(testIdentity, roomId);
-        const serialized = (key_exchange as { serializeKeyExchange: (invite: KeyExchangeInvite) => unknown }).serializeKeyExchange(invite);
-        const deserialized = (key_exchange as { deserializeKeyExchange: (serialized: unknown) => KeyExchangeInvite }).deserializeKeyExchange(serialized);
+        const serialized = serializeKeyExchange(invite);
+        const deserialized = deserializeKeyExchange(serialized);
         
         expect(deserialized.roomId).toBe(roomId);
       }
@@ -525,8 +527,8 @@ describe("Key Exchange Tests", () => {
       const invite = await createKeyExchangeInvite(testIdentity, roomId);
       
       // Serialize and deserialize
-      const serialized = (key_exchange as { serializeKeyExchange: (invite: KeyExchangeInvite) => unknown }).serializeKeyExchange(invite);
-      const deserialized = (key_exchange as { deserializeKeyExchange: (serialized: unknown) => KeyExchangeInvite }).deserializeKeyExchange(serialized);
+      const serialized = serializeKeyExchange(invite);
+      const deserialized = deserializeKeyExchange(serialized);
       
       // Should not create a pattern like "12345678-xxxx-xxxx-xxxx-12345678"
       expect(deserialized.roomId).not.toMatch(/xxxx/);
